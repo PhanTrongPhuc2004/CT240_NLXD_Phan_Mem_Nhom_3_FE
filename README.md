@@ -29,7 +29,7 @@ Chức năng chính:
 ## Công nghệ sử dụng (hiện tại)
 
 - Framework: Vue.js 3 (Composition API + <script setup>)
-- Ngôn ngữ: TypeScript (có thể chuyển sang JavaScript thuần nếu cần – xem phần hướng dẫn bên dưới)
+- Ngôn ngữ: JavaScript
 - State Management: Pinia
 - Routing: Vue Router 4
 - HTTP Client: Axios (sẽ thêm sau)
@@ -37,7 +37,7 @@ Chức năng chính:
 - Build Tool: Vite
 - Lint & Format: ESLint + Prettier
 - Testing: Vitest
-- UI Library: (chưa chọn) – có thể dùng Tailwind CSS / Bootstrap / Vuetify / Element Plus
+- UI Library: Bootstrap
 - IDE: VS Code
 - Package Manager: npm
 
