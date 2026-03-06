@@ -1,0 +1,8 @@
+/* Global styles */
+:root {
+    --primary-color: #1976d2;
+}
+
+.v-application {
+    font-family: 'Roboto', sans-serif;
+}
