@@ -1,10 +1,11 @@
+<!-- src/components/UserAvatarName.vue - ĐÃ SỬA: Gọi đúng endpoint /users/{id} thay vì /users/list -->
 <template>
   <div class="d-flex align-center">
     <!-- Avatar -->
     <v-avatar color="primary" size="24" class="mr-2">
       <span class="text-white text-caption font-weight-bold">{{ initials }}</span>
     </v-avatar>
-    
+
     <!-- Tên -->
     <span class="text-caption text-grey-darken-1 font-weight-medium">
       Chủ dự án: {{ displayName }}
@@ -14,7 +15,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import api from '@/api/index'; // Sử dụng api đã cấu hình sẵn (có interceptor token)
 
 const props = defineProps({
   userId: {
@@ -43,17 +44,13 @@ const initials = computed(() => {
 
 onMounted(async () => {
   if (!props.userId) return;
-  
-  try {
-    const token = localStorage.getItem('auth_token');
-    // Gọi API lấy thông tin user theo ID
-    const res = await axios.post('http://localhost:8080/api/users/list', 
-      { userIds: [props.userId] }, 
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
 
-    if (res.data && res.data.length > 0) {
-      user.value = res.data[0];
+  try {
+    // SỬA: Gọi đúng endpoint /users/{id} thay vì /users/list
+    const res = await api.get(`/users/${props.userId}`);
+
+    if (res.data) {
+      user.value = res.data;
     }
   } catch (err) {
     console.error(`Lỗi lấy info user ${props.userId}:`, err);

@@ -1,3 +1,4 @@
+<!-- src/views/admin/ProjectManagement.vue - ĐÃ SỬA: Gọi đúng endpoint /users để lấy danh sách user, không dùng axios trực tiếp -->
 <template>
   <v-container class="py-10">
     <v-row>
@@ -13,14 +14,9 @@
 
     <v-card class="mt-8" variant="flat" border>
       <!-- Bảng dữ liệu để hiển thị -->
-      <v-data-table
-        :headers="headers"
-        :items="projectStore.allSystemProjects"
-        :loading="projectStore.loading"
-        loading-text="Đang tải dữ liệu..."
-        no-data-text="Không có dự án nào trong hệ thống."
-        items-per-page-text="Số dự án mỗi trang"
-      >
+      <v-data-table :headers="headers" :items="projectStore.allSystemProjects" :loading="projectStore.loading"
+        loading-text="Đang tải dữ liệu..." no-data-text="Không có dự án nào trong hệ thống."
+        items-per-page-text="Số dự án mỗi trang">
         <!-- Tùy chỉnh cột Tên dự án -->
         <template v-slot:item.name="{ item }">
           <div class="font-weight-bold">{{ item.name }}</div>
@@ -59,7 +55,8 @@
     <v-dialog v-model="dialogDelete" max-width="500px">
       <v-card>
         <v-card-title class="text-h5">Bạn có chắc chắn muốn xóa dự án này?</v-card-title>
-        <v-card-text>Hành động này không thể hoàn tác. Tất cả dữ liệu liên quan đến dự án sẽ bị xóa vĩnh viễn.</v-card-text>
+        <v-card-text>Hành động này không thể hoàn tác. Tất cả dữ liệu liên quan đến dự án sẽ bị xóa vĩnh
+          viễn.</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="blue-darken-1" variant="text" @click="closeDelete">Hủy</v-btn>
@@ -68,7 +65,6 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
   </v-container>
 </template>
 
@@ -76,7 +72,7 @@
 import { ref, onMounted, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
-import axios from 'axios'; // Import axios trực tiếp hoặc qua api wrapper
+import api from '@/api/index'; // SỬA: Dùng api đã cấu hình sẵn thay vì axios trực tiếp
 
 const router = useRouter();
 const projectStore = useProjectStore();
@@ -108,13 +104,9 @@ onMounted(async () => {
 // Hàm lấy danh sách user để map ID -> Tên
 const fetchUsers = async () => {
   try {
-    const token = localStorage.getItem('auth_token'); // <--- ĐÚNG KEY LÀ AUTH_TOKEN
-    // Hoặc lấy từ store auth
-    // Gọi API backend mới tạo
-    const response = await axios.get('http://localhost:8080/api/users/all', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    
+    // SỬA: Gọi đúng endpoint /users thay vì /users/all
+    const response = await api.get('/users');
+
     // Tạo map: id -> fullName
     response.data.forEach(user => {
       userMap[user.id] = user.fullName || user.username;

@@ -17,61 +17,42 @@
         <div class="d-flex align-center justify-space-between">
           <div>
             <div class="d-flex align-center mb-2">
-              <h1 class="text-h4 font-weight-bold text-primary mr-4">{{ project?.name }}</h1>
-              <v-chip :color="getStatusColor(project?.status)" label size="small" class="font-weight-bold">
+              <h1 class="text-h4 font-weight-bold text-primary mr-4">{{ project?.name || 'Tạo dự án mới' }}</h1>
+              <v-chip v-if="project?.status" :color="getStatusColor(project?.status)" label size="small"
+                class="font-weight-bold">
                 {{ project?.status }}
               </v-chip>
             </div>
             <p class="text-body-1 text-grey-darken-1" style="max-width: 800px;">
-              {{ project?.description || 'Chưa có mô tả cho dự án này.' }}
+              {{ project?.description || 'Nhập mô tả cho dự án mới của bạn.' }}
             </p>
           </div>
-          
+
           <!-- Action Buttons -->
           <div class="d-flex gap-2">
-            <v-btn 
-              v-if="isOwner"
-              prepend-icon="mdi-cog" 
-              variant="outlined" 
-              color="primary"
-              @click="activeTab = 'settings'"
-            >
+            <v-btn v-if="isOwner && !isNewProject" prepend-icon="mdi-cog" variant="outlined" color="primary"
+              @click="activeTab = 'settings'">
               Cài đặt
             </v-btn>
-            <v-btn 
-              v-if="isMember && !isOwner"
-              prepend-icon="mdi-logout" 
-              variant="outlined" 
-              color="error"
-              @click="handleLeaveProject"
-            >
+            <v-btn v-if="isMember && !isOwner && !isNewProject" prepend-icon="mdi-logout" variant="outlined"
+              color="error" @click="handleLeaveProject">
               Rời dự án
             </v-btn>
             <!-- Nút Hủy yêu cầu cho người đang chờ duyệt -->
-            <v-btn 
-              v-if="isPending"
-              prepend-icon="mdi-close-circle" 
-              variant="outlined" 
-              color="warning"
-              @click="handleCancelRequest"
-            >
+            <v-btn v-if="isPending && !isNewProject" prepend-icon="mdi-close-circle" variant="outlined" color="warning"
+              @click="handleCancelRequest">
               Hủy yêu cầu
             </v-btn>
             <!-- Nút Xin tham gia cho người chưa tham gia -->
-            <v-btn 
-              v-if="!isMember && !isOwner && !isPending"
-              prepend-icon="mdi-login" 
-              variant="elevated" 
-              color="primary"
-              @click="handleJoinProject"
-            >
+            <v-btn v-if="!isMember && !isOwner && !isPending && !isNewProject" prepend-icon="mdi-login"
+              variant="elevated" color="primary" @click="handleJoinProject">
               Xin tham gia
             </v-btn>
           </div>
         </div>
 
         <!-- Thống kê nhanh -->
-        <div class="d-flex mt-6 gap-6">
+        <div v-if="!isNewProject" class="d-flex mt-6 gap-6">
           <div class="d-flex align-center">
             <v-avatar color="primary" size="32" class="mr-2">
               <v-icon size="18" color="white">mdi-account-group</v-icon>
@@ -113,7 +94,7 @@
       <!-- Tab Content -->
       <v-container fluid class="pa-6 bg-grey-lighten-5 min-h-screen">
         <v-window v-model="activeTab">
-          
+
           <!-- TAB 1: TỔNG QUAN -->
           <v-window-item value="overview">
             <v-row>
@@ -121,12 +102,7 @@
                 <v-card class="pa-4 h-100" elevation="1">
                   <v-card-title>Tiến độ dự án</v-card-title>
                   <v-card-text class="d-flex flex-column align-center justify-center" style="min-height: 300px;">
-                    <v-progress-circular
-                      :model-value="0" 
-                      :size="150"
-                      :width="15"
-                      color="primary"
-                    >
+                    <v-progress-circular :model-value="0" :size="150" :width="15" color="primary">
                       <span class="text-h5 font-weight-bold">0%</span>
                     </v-progress-circular>
                     <p class="mt-4 text-grey">Chưa có dữ liệu task để tính toán tiến độ.</p>
@@ -164,13 +140,9 @@
                   Thêm công việc
                 </v-btn>
               </div>
-              
+
               <!-- Placeholder cho Task List -->
-              <v-sheet
-                border
-                rounded
-                class="d-flex flex-column align-center justify-center pa-10 bg-grey-lighten-4"
-              >
+              <v-sheet border rounded class="d-flex flex-column align-center justify-center pa-10 bg-grey-lighten-4">
                 <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-clipboard-list-outline</v-icon>
                 <h3 class="text-h6 text-grey-darken-1">Chưa có công việc nào</h3>
                 <p class="text-body-2 text-grey mb-6">Bắt đầu bằng cách tạo công việc đầu tiên cho dự án này.</p>
@@ -184,45 +156,27 @@
           <!-- TAB 3: THÀNH VIÊN -->
           <v-window-item value="members">
             <!-- SECTION: YÊU CẦU THAM GIA (Chỉ hiện cho Owner/Manager) -->
-            <v-card 
-              v-if="(isOwner || isManager) && project?.pendingMemberIds?.length > 0" 
-              class="pa-4 mb-6 border-warning" 
-              elevation="1"
-              variant="outlined"
-              color="orange-lighten-5"
-            >
+            <v-card v-if="(isOwner || isManager) && project?.pendingMemberIds?.length > 0"
+              class="pa-4 mb-6 border-warning" elevation="1" variant="outlined" color="orange-lighten-5">
               <div class="d-flex align-center mb-2">
                 <v-icon color="warning" class="mr-2">mdi-account-clock</v-icon>
                 <h3 class="text-h6 text-warning-darken-2">Yêu cầu tham gia ({{ project.pendingMemberIds.length }})</h3>
               </div>
-              
+
               <v-list bg-color="transparent">
-                <v-list-item 
-                  v-for="userId in project.pendingMemberIds" 
-                  :key="userId"
-                  class="mb-2 rounded border bg-white"
-                >
+                <v-list-item v-for="userId in project.pendingMemberIds" :key="userId"
+                  class="mb-2 rounded border bg-white">
                   <template v-slot:prepend>
                     <UserAvatarName :user-id="userId" />
                   </template>
-                  
+
                   <template v-slot:append>
                     <div class="d-flex gap-2">
-                      <v-btn 
-                        size="small" 
-                        color="success" 
-                        prepend-icon="mdi-check"
-                        @click="approveJoin(userId)"
-                      >
+                      <v-btn size="small" color="success" prepend-icon="mdi-check" @click="approveJoin(userId)">
                         Duyệt
                       </v-btn>
-                      <v-btn 
-                        size="small" 
-                        color="error" 
-                        variant="outlined"
-                        prepend-icon="mdi-close"
-                        @click="rejectJoin(userId)"
-                      >
+                      <v-btn size="small" color="error" variant="outlined" prepend-icon="mdi-close"
+                        @click="rejectJoin(userId)">
                         Từ chối
                       </v-btn>
                     </div>
@@ -235,7 +189,8 @@
             <v-card class="pa-4" elevation="1">
               <div class="d-flex justify-space-between align-center mb-4">
                 <h3 class="text-h6">Thành viên dự án ({{ project?.memberIds?.length || 0 }})</h3>
-                <v-btn v-if="isOwner || isManager" color="primary" prepend-icon="mdi-account-plus" @click="dialogAddMember = true">
+                <v-btn v-if="isOwner || isManager" color="primary" prepend-icon="mdi-account-plus"
+                  @click="dialogAddMember = true">
                   Thêm thành viên
                 </v-btn>
               </div>
@@ -252,17 +207,13 @@
                 </v-list-item>
 
                 <!-- Managers -->
-                <v-list-item 
-                  v-for="managerId in project?.managerIds" 
-                  :key="managerId"
-                  class="mb-2 rounded border"
-                >
+                <v-list-item v-for="managerId in project?.managerIds" :key="managerId" class="mb-2 rounded border">
                   <template v-slot:prepend>
                     <UserAvatarName :user-id="managerId" />
                   </template>
                   <template v-slot:append>
                     <v-chip color="blue" size="small" label class="mr-2">Manager</v-chip>
-                    
+
                     <v-menu v-if="isOwner">
                       <template v-slot:activator="{ props }">
                         <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props"></v-btn>
@@ -286,11 +237,7 @@
                 </v-list-item>
 
                 <!-- Members -->
-                <v-list-item 
-                  v-for="memberId in filteredMembers" 
-                  :key="memberId"
-                  class="mb-2 rounded border"
-                >
+                <v-list-item v-for="memberId in filteredMembers" :key="memberId" class="mb-2 rounded border">
                   <template v-slot:prepend>
                     <UserAvatarName :user-id="memberId" />
                   </template>
@@ -325,19 +272,9 @@
             <v-card class="pa-6" elevation="1">
               <h3 class="text-h6 mb-4">Cài đặt dự án</h3>
               <v-form @submit.prevent="updateProjectInfo">
-                <v-text-field
-                  v-model="editForm.name"
-                  label="Tên dự án"
-                  variant="outlined"
-                  class="mb-4"
-                ></v-text-field>
-                <v-textarea
-                  v-model="editForm.description"
-                  label="Mô tả"
-                  variant="outlined"
-                  rows="4"
-                  class="mb-4"
-                ></v-textarea>
+                <v-text-field v-model="editForm.name" label="Tên dự án" variant="outlined" class="mb-4"></v-text-field>
+                <v-textarea v-model="editForm.description" label="Mô tả" variant="outlined" rows="4"
+                  class="mb-4"></v-textarea>
                 <div class="d-flex justify-end">
                   <v-btn color="primary" type="submit" :loading="updating">Lưu thay đổi</v-btn>
                 </div>
@@ -365,23 +302,10 @@
       <v-card>
         <v-card-title>Thêm thành viên vào dự án</v-card-title>
         <v-card-text>
-          <v-autocomplete
-            v-model="newMemberId"
-            :items="searchResults"
-            :loading="searching"
-            item-title="fullName"
-            item-value="id"
-            label="Tìm kiếm thành viên"
-            placeholder="Nhập tên hoặc email..."
-            variant="outlined"
-            prepend-inner-icon="mdi-magnify"
-            return-object
-            @update:search="onSearchUser"
-            no-filter
-            hide-no-data
-            hide-selected
-            clearable
-          >
+          <v-autocomplete v-model="newMemberId" :items="searchResults" :loading="searching" item-title="fullName"
+            item-value="id" label="Tìm kiếm thành viên" placeholder="Nhập tên hoặc email..." variant="outlined"
+            prepend-inner-icon="mdi-magnify" return-object @update:search="onSearchUser" no-filter hide-no-data
+            hide-selected clearable>
             <template v-slot:item="{ props, item }">
               <v-list-item v-bind="props" :subtitle="item.raw.email">
                 <template v-slot:prepend>
@@ -401,12 +325,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="grey" variant="text" @click="dialogAddMember = false">Hủy</v-btn>
-          <v-btn 
-            color="primary" 
-            @click="addMemberSubmit" 
-            :loading="addingMember"
-            :disabled="!newMemberId"
-          >
+          <v-btn color="primary" @click="addMemberSubmit" :loading="addingMember" :disabled="!newMemberId">
             Thêm
           </v-btn>
         </v-card-actions>
@@ -422,8 +341,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import { projectApi } from '@/api/projectApi';
-import axios from 'axios';
-import UserAvatarName from '@/components/UserAvatarName.vue'; // Import component hiển thị user
+import UserAvatarName from '@/components/UserAvatarName.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -458,6 +376,7 @@ const isOwner = computed(() => project.value?.ownerId === currentUserId.value);
 const isManager = computed(() => project.value?.managerIds?.includes(currentUserId.value));
 const isMember = computed(() => project.value?.memberIds?.includes(currentUserId.value));
 const isPending = computed(() => project.value?.pendingMemberIds?.includes(currentUserId.value));
+const isNewProject = computed(() => route.params.id === 'create');
 
 // Lọc danh sách member để không hiển thị trùng với Owner và Manager
 const filteredMembers = computed(() => {
@@ -482,12 +401,18 @@ const getInitials = (name) => {
 };
 
 const loadProjectData = async () => {
+  // Nếu là tạo mới (id = 'create') → không load project cũ
+  if (isNewProject.value) {
+    loading.value = false;
+    return;
+  }
+
   loading.value = true;
   error.value = null;
   try {
     const res = await projectApi.getById(route.params.id);
     project.value = res.data;
-    
+
     editForm.name = res.data.name;
     editForm.description = res.data.description;
   } catch (err) {
@@ -531,7 +456,6 @@ const handleLeaveProject = async () => {
   }
 };
 
-// Xử lý xin tham gia
 const handleJoinProject = async () => {
   try {
     await projectStore.joinProject(project.value.id);
@@ -542,15 +466,10 @@ const handleJoinProject = async () => {
   }
 };
 
-// Xử lý hủy yêu cầu
 const handleCancelRequest = async () => {
   if (!confirm("Bạn muốn hủy yêu cầu tham gia dự án này?")) return;
   try {
-    // Gọi API hủy yêu cầu (cần thêm vào projectApi.js)
-    const token = localStorage.getItem('auth_token');
-    await axios.post(`http://localhost:8080/api/projects/${project.value.id}/join/cancel`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    await projectApi.cancelJoinRequest(project.value.id); // Gọi endpoint mới
     await loadProjectData();
     alert("Đã hủy yêu cầu.");
   } catch (err) {
@@ -558,7 +477,6 @@ const handleCancelRequest = async () => {
   }
 };
 
-// Duyệt yêu cầu
 const approveJoin = async (userId) => {
   try {
     await projectApi.approveJoin(project.value.id, { userId });
@@ -569,7 +487,6 @@ const approveJoin = async (userId) => {
   }
 };
 
-// Từ chối yêu cầu
 const rejectJoin = async (userId) => {
   if (!confirm("Từ chối yêu cầu này?")) return;
   try {
@@ -591,10 +508,7 @@ const onSearchUser = async (keyword) => {
   searchTimeout = setTimeout(async () => {
     searching.value = true;
     try {
-      const token = localStorage.getItem('auth_token');
-      const res = await axios.get(`http://localhost:8080/api/users/search?keyword=${keyword}`, {
-         headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/users/search', { params: { keyword } });
       searchResults.value = res.data;
     } catch (err) {
       console.error("Lỗi tìm kiếm:", err);
@@ -608,7 +522,7 @@ const addMemberSubmit = async () => {
   const userIdToAdd = newMemberId.value?.id || newMemberId.value;
 
   if (!userIdToAdd) return;
-  
+
   addingMember.value = true;
   try {
     const payload = { userId: userIdToAdd };
@@ -629,7 +543,7 @@ const addMemberSubmit = async () => {
 };
 
 const removeMember = async (userId) => {
-  if (!confirm("Xóa thành viên này khỏi dự án? Thao tác này sẽ xóa họ hoàn toàn.")) return;
+  if (!confirm("Xóa thành viên này khỏi dự án?")) return;
   try {
     await projectApi.removeMember(project.value.id, userId);
     await loadProjectData();
@@ -639,7 +553,7 @@ const removeMember = async (userId) => {
 };
 
 const removeManager = async (userId) => {
-  if (!confirm("Chỉ xóa quyền quản lý của thành viên này? Họ vẫn sẽ là thành viên thường.")) return;
+  if (!confirm("Chỉ xóa quyền quản lý của thành viên này?")) return;
   try {
     await projectApi.removeManager(project.value.id, userId);
     await loadProjectData();
@@ -670,8 +584,19 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.gap-2 { gap: 8px; }
-.gap-6 { gap: 24px; }
-.min-h-screen { min-height: calc(100vh - 200px); }
-.border-warning { border: 1px solid #FFB74D !important; }
+.gap-2 {
+  gap: 8px;
+}
+
+.gap-6 {
+  gap: 24px;
+}
+
+.min-h-screen {
+  min-height: calc(100vh - 200px);
+}
+
+.border-warning {
+  border: 1px solid #FFB74D !important;
+}
 </style>

@@ -1,3 +1,4 @@
+// src\stores\project.js
 import { defineStore } from 'pinia'
 import { projectApi } from '@/api/projectApi'
 import { useAuthStore } from './auth' // Để lấy ID người dùng hiện tại
