@@ -22,10 +22,10 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   response => response,
   error => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    if (error.response?.status === 401) {
       const authStore = useAuthStore()
       authStore.logout()
-      alert('Phiên đăng nhập hết hạn hoặc không có quyền. Vui lòng đăng nhập lại.')
+      alert('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.')
     }
     return Promise.reject(error)
   }

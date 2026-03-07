@@ -9,6 +9,16 @@
             class="elevation-1"
             no-data-text="Bạn chưa được giao công việc nào"
         >
+            <template v-slot:item.title="{ item }">
+                <a href="#" @click.prevent="goDetail(item)" class="text-decoration-none font-weight-bold text-primary">
+                    {{ item.title }}
+                </a>
+            </template>
+
+            <template v-slot:item.projectId="{ item }">
+                {{ getProjectName(item.projectId) }}
+            </template>
+
             <template v-slot:item.status="{ item }">
                 <v-menu location="bottom">
                     <template v-slot:activator="{ props }">
@@ -42,11 +52,15 @@
 
 <script setup>
 import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useTaskStore } from '@/stores/task'
+import { useProjectStore } from '@/stores/project'
 import { useAuthStore } from '@/stores/auth'
 
+const router = useRouter()
 const taskStore = useTaskStore()
 const authStore = useAuthStore()
+const projectStore = useProjectStore()
 
 const availableStatuses = ['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']
 
@@ -56,13 +70,25 @@ const loading = computed(() => taskStore.loading)
 const myTasks = computed(() => {
     const userId = authStore.user?.id
     if (!userId) return []
-    // Chỉ lấy các task mà assigneeId trùng với ID của user đang đăng nhập
+    // Lấy từ danh sách tất cả task của hệ thống, sau đó lọc ra những task được giao cho mình
     return taskStore.tasks.filter(t => t.assigneeId === userId)
 })
 
+const projects = computed(() => projectStore.projects)
+
+const getProjectName = (projectId) => {
+    const project = projects.value.find(p => p.id === projectId)
+    return project ? project.name : projectId
+}
+
+const goDetail = (item) => {
+    const realItem = item.raw || item
+    router.push(`/tasks/${realItem.id}`)
+}
+
 const headers = [
     { title: 'Tiêu đề', key: 'title' },
-    { title: 'Dự án ID', key: 'projectId' },
+    { title: 'Dự án', key: 'projectId' },
     { title: 'Ưu tiên', key: 'priority' },
     { title: 'Trạng thái', key: 'status' },
     { title: 'Hạn chót', key: 'deadline' },
@@ -90,6 +116,9 @@ const handleUpdateStatus = async (item, newStatus) => {
 }
 
 onMounted(() => {
+    // Lấy tất cả task và project của hệ thống để đảm bảo có đủ dữ liệu
+    // để lọc ra task của mình và hiển thị đúng tên dự án.
     taskStore.fetchAll()
+    projectStore.fetchAll()
 })
 </script>

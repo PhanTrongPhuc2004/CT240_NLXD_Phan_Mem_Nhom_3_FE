@@ -22,8 +22,7 @@ export const useUserStore = defineStore('user', {
                 }))
             } catch (err) {
                 this.error = 'Không thể tải danh sách người dùng'
-                // Log chi tiết lỗi từ Backend để debug (thường chứa message StackOverflow hoặc NullPointer)
-                console.error('Lỗi Backend khi tải Users:', err.response?.data || err.message)
+                // Log chi tiết lỗi từ Backend để debug (thường chứa message StackOverflow hoặc NullPointer)                console.error('Lỗi Backend khi tải Users:', err.response?.data || err.message)
             } finally {
                 this.loading = false
             }
