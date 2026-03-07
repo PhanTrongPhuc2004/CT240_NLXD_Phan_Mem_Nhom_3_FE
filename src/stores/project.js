@@ -55,7 +55,17 @@ export const useProjectStore = defineStore('project', {
     },
 
     async create(data) {
-      const res = await projectApi.create(data)
+      // --- ĐÂY LÀ PHẦN ĐÃ SỬA ---
+      // Tạo một đối tượng payload mới chỉ chứa các trường mà backend cần
+      const payload = {
+        name: data.name,
+        description: data.description,
+      }
+
+      // Gọi API với payload đã được lọc, thay vì gửi toàn bộ `data`
+      const res = await projectApi.create(payload)
+      // -------------------------
+
       this.projects.push(res.data)
       return res.data
     },
