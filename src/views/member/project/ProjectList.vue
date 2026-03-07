@@ -1,3 +1,4 @@
+<!-- src\views\member\project\ProjectList.vue -->
 <template>
   <v-container>
     <v-toolbar flat color="transparent">
@@ -34,6 +35,7 @@
         sm="6" 
         md="4"
       >
+        <!-- Không cần truyền ownerName nữa -->
         <ProjectCard :project="project" />
       </v-col>
     </v-row>
@@ -52,6 +54,6 @@ const projects = computed(() => projectStore.projects)
 
 // Tự động gọi API lấy danh sách từ BE khi vừa vào trang
 onMounted(async () => {
-  await projectStore.fetchAll()
+  await projectStore.fetchAll();
 })
 </script>

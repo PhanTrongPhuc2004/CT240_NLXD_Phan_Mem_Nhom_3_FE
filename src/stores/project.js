@@ -1,10 +1,12 @@
+// src\stores\project.js
 import { defineStore } from 'pinia'
 import { projectApi } from '@/api/projectApi'
 import { useAuthStore } from './auth' // Để lấy ID người dùng hiện tại
 
 export const useProjectStore = defineStore('project', {
   state: () => ({
-    projects: [],
+    projects: [], // Danh sách dự án của cá nhân
+    allSystemProjects: [], // <-- THÊM STATE MỚI
     currentProject: null,
     loading: false,
     error: null,
@@ -42,6 +44,21 @@ export const useProjectStore = defineStore('project', {
       }
     },
 
+    // --- THÊM ACTION MỚI ---
+    async fetchAllSystem() {
+      this.loading = true
+      try {
+        const res = await projectApi.getAllSystem()
+        this.allSystemProjects = res.data
+      } catch (err) {
+        this.error = 'Không thể tải danh sách dự án toàn hệ thống'
+        console.error(err.response?.data || err.message) // Log lỗi chi tiết
+      } finally {
+        this.loading = false
+      }
+    },
+    // -----------------------
+
     async getDetail(id) {
       this.loading = true
       try {
@@ -55,7 +72,11 @@ export const useProjectStore = defineStore('project', {
     },
 
     async create(data) {
-      const res = await projectApi.create(data)
+      const payload = {
+        name: data.name,
+        description: data.description,
+      }
+      const res = await projectApi.create(payload)
       this.projects.push(res.data)
       return res.data
     },
@@ -70,7 +91,9 @@ export const useProjectStore = defineStore('project', {
 
     async delete(id) {
       await projectApi.delete(id)
+      // Xóa khỏi cả 2 danh sách nếu có
       this.projects = this.projects.filter((p) => p.id !== id)
+      this.allSystemProjects = this.allSystemProjects.filter((p) => p.id !== id)
       if (this.currentProject?.id === id) this.currentProject = null
     },
 
