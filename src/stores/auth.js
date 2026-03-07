@@ -1,6 +1,6 @@
-// src/stores/auth.js - ĐÃ SỬA HOÀN CHỈNH: Đảm bảo token được lưu đúng, redirect không còn lỗi "/dashboard"
+// src/stores/auth.js - ĐÃ BỔ SUNG HÀM register() để fix lỗi "authStore.register is not a function"
 import { defineStore } from 'pinia'
-import { login, getCurrentUser } from '@/api/userApi'
+import { login, getCurrentUser, register } from '@/api/userApi' // Thêm import register
 import router from '@/router'
 
 export const useAuthStore = defineStore('auth', {
@@ -19,15 +19,15 @@ export const useAuthStore = defineStore('auth', {
     },
 
     actions: {
+        // Đăng nhập (giữ nguyên)
         async login(credentials) {
             this.loading = true
             this.error = null
 
             try {
-                const response = await login(credentials) // BE trả { token, message, user? }
+                const response = await login(credentials)
 
-                // LƯU TOKEN TRƯỚC TIÊN (đây là nguyên nhân token undefined trước đó)
-                this.token = response.token || response.data?.token // xử lý cả response trực tiếp và response.data
+                this.token = response.token || response.data?.token
                 if (!this.token) {
                     throw new Error('Không nhận được token từ server')
                 }
@@ -35,7 +35,6 @@ export const useAuthStore = defineStore('auth', {
                 this.isAuthenticated = true
                 localStorage.setItem('auth_token', this.token)
 
-                // Lấy user (role) từ response hoặc gọi API /me
                 this.user = response.user || response.data?.user || null
                 if (this.user) {
                     localStorage.setItem('auth_user', JSON.stringify(this.user))
@@ -43,9 +42,8 @@ export const useAuthStore = defineStore('auth', {
                     await this.fetchCurrentUser()
                 }
 
-                // TỰ ĐỘNG REDIRECT THEO ROLE - KHÔNG PUSH '/dashboard' NỮA
                 const role = this.userRole
-                console.log('User role after login:', role) // Debug để kiểm tra role có lấy được không
+                console.log('User role after login:', role)
 
                 if (role === 'ADMIN' || role === 'MANAGER') {
                     router.push('/admin')
@@ -53,6 +51,7 @@ export const useAuthStore = defineStore('auth', {
                     router.push('/')
                 }
 
+                console.log('Login response:', response)
                 return response
             } catch (err) {
                 this.error = err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.'
@@ -63,19 +62,50 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        async fetchCurrentUser() {
-            if (!this.token) {
-                console.warn('No token available for fetchCurrentUser')
-                return
+        // ĐĂNG KÝ - HÀM MỚI ĐỂ FIX LỖI "authStore.register is not a function"
+        async register(registrationData) {
+            this.loading = true
+            this.error = null
+
+            try {
+                const response = await register(registrationData) // Gọi API register
+
+                // Sau đăng ký thành công, có thể tự động login hoặc redirect đến login
+                this.token = response.token || response.data?.token
+                if (this.token) {
+                    this.isAuthenticated = true
+                    localStorage.setItem('auth_token', this.token)
+                }
+
+                this.user = response.user || response.data?.user || null
+                if (this.user) {
+                    localStorage.setItem('auth_user', JSON.stringify(this.user))
+                }
+
+                // Redirect sau đăng ký (thường về login hoặc dashboard nếu auto-login)
+                router.push('/login') // Hoặc '/' nếu BE trả token và muốn auto-login
+
+                console.log('Register response:', response)
+                return response
+            } catch (err) {
+                this.error = err.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.'
+                console.error('Register error:', err)
+                throw err
+            } finally {
+                this.loading = false
             }
+        },
+
+        async fetchCurrentUser() {
+            if (!this.token) return
 
             try {
                 const userData = await getCurrentUser()
                 this.user = userData
                 localStorage.setItem('auth_user', JSON.stringify(this.user))
-                console.log('Fetched user:', this.user) // Debug role
+                console.log('Fetched user:', this.user)
             } catch (err) {
-                console.error('Fetch current user failed:', err)
+                console.error('Fetch user failed:', err)
                 this.logout()
             }
         },
@@ -87,15 +117,13 @@ export const useAuthStore = defineStore('auth', {
             if (token) {
                 this.token = token
                 this.isAuthenticated = true
-                console.log('Initialized token from storage:', token.substring(0, 20) + '...')
             }
 
             if (userStr) {
                 try {
                     this.user = JSON.parse(userStr)
-                    console.log('Initialized user from storage:', this.user)
                 } catch (e) {
-                    console.error('Parse user from storage failed:', e)
+                    console.error('Parse user failed:', e)
                     this.logout()
                 }
             }

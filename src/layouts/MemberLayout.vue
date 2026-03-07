@@ -1,61 +1,114 @@
+<!-- src/layouts/MemberLayout.vue -->
 <template>
-  <v-layout shadow>
-    <v-app-bar color="primary" flat px-4>
-      <v-toolbar-title class="font-weight-bold">CT240 - Quản lý dự án</v-toolbar-title>
+  <v-app>
+
+    <!-- Header trên cùng (màu xanh, có tên hệ thống + logout) -->
+    <v-app-bar app color="primary" dark flat elevation="2">
+      <v-toolbar-title class="font-weight-bold">
+        Quản lý công việc nhóm
+      </v-toolbar-title>
       <v-spacer></v-spacer>
-      <span class="me-4 text-body-2">{{ authStore.user?.name }}</span>
-      <v-btn variant="text" icon="mdi-logout" @click="logout"></v-btn>
+      <!-- Nút đăng xuất góc phải -->
+      <v-btn icon @click="logout" title="Đăng xuất">
+        <v-icon>mdi-logout</v-icon>
+      </v-btn>
     </v-app-bar>
 
-    <v-navigation-drawer permanent elevation="1">
-      <v-list nav>
-        <v-list-item 
-          prepend-icon="mdi-view-dashboard" 
-          title="Dashboard" 
-          to="/" 
-        ></v-list-item>
-        
-        <v-list-item 
-          prepend-icon="mdi-folder-strategy" 
-          title="Dự án" 
-          to="/projects" 
-        ></v-list-item>
-        
-        <v-list-item 
-          prepend-icon="mdi-clipboard-list" 
-          title="Công việc" 
-          to="/tasks" 
-        ></v-list-item>
-        
-        <v-list-item 
-          prepend-icon="mdi-bell" 
-          title="Thông báo" 
-          to="/notifications" 
-        ></v-list-item>
-        
-        <v-list-item 
-          prepend-icon="mdi-account-circle" 
-          title="Hồ sơ" 
-          to="/profile" 
-        ></v-list-item>
+    <!-- Sidebar trái cho Member -->
+    <v-navigation-drawer permanent app color="grey lighten-3" width="280" class="elevation-1">
+      <v-list nav dense>
+        <!-- Tiêu đề -->
+        <v-list-item class="px-6 py-4">
+          <v-list-item-title class="text-subtitle-1 font-weight-bold grey--text text--darken-3">
+            Thành viên
+          </v-list-item-title>
+        </v-list-item>
+
+        <v-divider></v-divider>
+
+        <!-- Menu cho Member -->
+        <v-list-item-group v-model="selectedItem" color="primary">
+          <v-list-item :to="{ name: 'MemberDashboard' }" exact @click="selectedItem = 0">
+            <v-list-item-icon>
+              <v-icon>mdi-view-dashboard</v-icon>
+            </v-list-item-icon>
+            <v-list-item-title>Dashboard</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item :to="{ name: 'MemberProjects' }" @click="selectedItem = 1">
+            <v-list-item-icon>
+              <v-icon>mdi-folder-outline</v-icon>
+            </v-list-item-icon>
+            <v-list-item-title>Dự án của tôi</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item :to="{ name: 'MemberTasks' }" @click="selectedItem = 2">
+            <v-list-item-icon>
+              <v-icon>mdi-clipboard-text-outline</v-icon>
+            </v-list-item-icon>
+            <v-list-item-title>Công việc của tôi</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item :to="{ name: 'Notifications' }" @click="selectedItem = 3">
+            <v-list-item-icon>
+              <v-icon>mdi-bell-outline</v-icon>
+            </v-list-item-icon>
+            <v-list-item-title>Thông báo của tôi</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item :to="{ name: 'Profile' }" @click="selectedItem = 4">
+            <v-list-item-icon>
+              <v-icon>mdi-account-circle-outline</v-icon>
+            </v-list-item-icon>
+            <v-list-item-title>Hồ sơ</v-list-item-title>
+          </v-list-item>
+        </v-list-item-group>
       </v-list>
     </v-navigation-drawer>
 
-    <v-main style="min-height: 100vh; background-color: #f5f5f5;">
-      <router-view />
+    <!-- Nội dung chính -->
+    <v-main>
+      <v-container fluid class="pa-6">
+        <router-view />
+      </v-container>
     </v-main>
-  </v-layout>
+  </v-app>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
 const router = useRouter()
 
+const drawer = ref(true)
+const selectedItem = ref(0)
+
 const logout = () => {
   authStore.logout()
   router.push('/login')
 }
 </script>
+
+<style scoped>
+.v-navigation-drawer {
+  background-color: #838383 !important;
+  border-right: 1px solid #e0e0e0 !important;
+  z-index: 10 !important;
+}
+
+.v-list-item__icon {
+  margin-right: 16px !important;
+}
+
+.v-list-item__title {
+  font-size: 0.95rem !important;
+  font-weight: 500 !important;
+}
+
+.v-list-item--active {
+  background-color: rgba(63, 81, 181, 0.12) !important;
+}
+</style>

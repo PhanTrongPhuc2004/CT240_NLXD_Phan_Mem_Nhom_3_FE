@@ -48,7 +48,6 @@ const handleRegister = async () => {
     loading.value = true
     try {
         await authStore.register(form.value)
-        router.push('/dashboard')
     } catch (err) {
         console.error('Register failed:', err)
         alert('Đăng ký thất bại!')

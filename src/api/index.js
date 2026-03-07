@@ -1,42 +1,34 @@
+// src/api/index.js - ĐÃ THÊM INTERCEPTOR GẮN TOKEN TỰ ĐỘNG
 import axios from 'axios'
-import router from '@/router' // Đảm bảo đã import router
-// Không import useAuthStore ở đây để tránh circular dependency
+import { useAuthStore } from '@/stores/auth'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
-  // Tạm thời tắt withCredentials nếu bạn chỉ dùng JWT qua Header
-  withCredentials: false,
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: 'http://localhost:8080/api',
+  headers: {
+    'Content-Type': 'application/json'
+  }
 })
 
-// Thêm token tự động
-api.interceptors.request.use(
-  (config) => {
-    // Lấy trực tiếp từ localStorage để đảm bảo luôn có dữ liệu mới nhất
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error),
-)
+// TỰ ĐỘNG GẮN TOKEN VÀO HEADER MỌI REQUEST
+api.interceptors.request.use(config => {
+  const authStore = useAuthStore()
+  if (authStore.token) {
+    config.headers.Authorization = `Bearer ${authStore.token}`
+  }
+  return config
+})
 
-// Xử lý lỗi
+// XỬ LÝ LỖI 401/403 → logout nếu token hết hạn
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      // Xóa sạch dấu vết khi token hết hạn
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      router.push('/login')
+  response => response,
+  error => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      const authStore = useAuthStore()
+      authStore.logout()
+      alert('Phiên đăng nhập hết hạn hoặc không có quyền. Vui lòng đăng nhập lại.')
     }
-
-    // Log lỗi chi tiết ra console để bạn dễ debug
-    console.error('API Error:', error.response?.data || error.message)
     return Promise.reject(error)
-  },
+  }
 )
 
 export default api

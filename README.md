@@ -41,36 +41,71 @@ Chức năng chính:
 - IDE: VS Code
 - Package Manager: npm
 
-## Cấu trúc thư mục hiện tại (sau khi tạo project)
+## Cấu trúc thư mục hiện tại
 
 ```text
-frontend/
-├── node_modules/
-├── public/
-│   └── favicon.ico
-├── src/
-│   ├── assets/                 
-│   ├── components/           
-│   ├── views/                  
-│   ├── stores/
-│   │   └── counter.ts         
-│   ├── router/
-│   │   └── index.ts
-│   ├── App.vue
-│   └── main.ts
-├── .env.local                  
-├── .gitignore
-├── .prettierrc.json
-├── env.d.ts
-├── eslint.config.js
-├── index.html
-├── package.json
-├── README.md
-├── tsconfig.app.json
-├── tsconfig.json
-├── tsconfig.vitest.json
-├── vite.config.ts
-└── vitest.config.ts
+src
+ ┣ api
+ ┃ ┣ commentApi.js
+ ┃ ┣ index.js
+ ┃ ┣ notificationApi.js
+ ┃ ┣ projectApi.js
+ ┃ ┣ reportApi.js
+ ┃ ┣ taskApi.js
+ ┃ ┗ userApi.js
+ ┣ assets
+ ┣ components
+ ┃ ┣ CommentSection.vue
+ ┃ ┣ LoadingSpinner.vue
+ ┃ ┣ NotificationItem.vue
+ ┃ ┣ ProjectCard.vue
+ ┃ ┗ TaskCard.vue
+ ┣ layouts
+ ┃ ┣ AdminLayout.vue
+ ┃ ┣ AuthLayout.vue
+ ┃ ┗ MemberLayout.vue
+ ┣ plugins
+ ┃ ┗ vuetify.js
+ ┣ router
+ ┃ ┗ index.js
+ ┣ stores
+ ┃ ┣ auth.js
+ ┃ ┣ notification.js
+ ┃ ┣ project.js
+ ┃ ┣ report.js
+ ┃ ┣ task.js
+ ┃ ┗ user.js
+ ┣ utils
+ ┃ ┗ format.js
+ ┣ views
+ ┃ ┣ admin
+ ┃ ┃ ┣ AdminDashboard.vue
+ ┃ ┃ ┣ NotificationManagement.vue
+ ┃ ┃ ┣ ProjectManagement.vue
+ ┃ ┃ ┣ ReportManagement.vue
+ ┃ ┃ ┣ TaskManagement.vue
+ ┃ ┃ ┗ UserManagement.vue
+ ┃ ┣ auth
+ ┃ ┃ ┣ Login.vue
+ ┃ ┃ ┗ Register.vue
+ ┃ ┣ member
+ ┃ ┃ ┣ notifications
+ ┃ ┃ ┃ ┗ NotificationList.vue
+ ┃ ┃ ┣ project
+ ┃ ┃ ┃ ┣ ProjectDetail.vue
+ ┃ ┃ ┃ ┣ ProjectForm.vue
+ ┃ ┃ ┃ ┣ ProjectList.vue
+ ┃ ┃ ┃ ┗ ProjectOverview.vue
+ ┃ ┃ ┣ task
+ ┃ ┃ ┃ ┣ TaskDetail.vue
+ ┃ ┃ ┃ ┗ TaskList.vue
+ ┃ ┃ ┗ MemberDashboard.vue
+ ┃ ┣ shared
+ ┃ ┃ ┗ Profile.vue
+ ┃ ┗ Dashboard.vue
+ ┣ App.vue
+ ┣ main.js
+ ┗ style.css
 ```
 
 ## Các bước chạy local
@@ -83,13 +118,10 @@ Yêu cầu hệ thống:
 
 ## Cài đặt và chạy
 
-1. **Di chuyển vào thư mục frontend**:
-   cd frontend
-
-2. **Cài đặt dependencies:**:
+1. **Cài đặt dependencies:**:
    npm install
 
-3. **Chạy ứng dụng development:**:
+2. **Chạy ứng dụng development:**:
    npm run dev
 
 - Mở browser: http://localhost:5173

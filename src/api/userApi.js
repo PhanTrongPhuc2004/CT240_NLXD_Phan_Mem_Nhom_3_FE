@@ -1,7 +1,9 @@
-// src/api/userApi.js - ĐÃ ĐẢM BẢO export getCurrentUser
+// src/api/userApi.js - ĐÃ THÊM HÀM register để FE gọi được
 import api from './index'
 
 export const login = (credentials) => api.post('/auth/login', credentials)
+
+export const register = (data) => api.post('/auth/register', data)  // THÊM DÒNG NÀY
 
 export const getCurrentUser = () => api.get('/auth/me')
 
@@ -18,16 +20,3 @@ export const updateUser = (id, data) => api.put(`/users/${id}`, data)
 export const deleteUser = (id) => api.delete(`/users/${id}`)
 
 export const updateRole = (id, role) => api.patch(`/users/${id}/role`, { role })
-
-// Export object nếu cần
-export const userApi = {
-  login,
-  getCurrentUser,
-  getProfile,
-  updateProfile,
-  getAllUsers,
-  createUser,
-  updateUser,
-  deleteUser,
-  updateRole
-}

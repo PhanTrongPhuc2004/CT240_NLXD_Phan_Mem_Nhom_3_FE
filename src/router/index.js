@@ -1,95 +1,122 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+// Layouts
+import AdminLayout from '@/layouts/AdminLayout.vue'
+import MemberLayout from '@/layouts/MemberLayout.vue'
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    // Auth routes (không layout)
     {
       path: '/login',
       name: 'Login',
       component: () => import('@/views/auth/Login.vue'),
+      meta: { requiresAuth: false }
     },
     {
       path: '/register',
       name: 'Register',
       component: () => import('@/views/auth/Register.vue'),
+      meta: { requiresAuth: false }
     },
 
+    // Member routes - dùng MemberLayout
     {
       path: '/',
-      component: () => import('@/layouts/MemberLayout.vue'),
+      component: MemberLayout,
       meta: { requiresAuth: true },
       children: [
         {
           path: '',
           name: 'MemberDashboard',
-          component: () => import('@/views/member/Dashboard.vue'),
+          component: () => import('@/views/member/MemberDashboard.vue')
         },
-        // Quản lý dự án
         {
           path: 'projects',
           name: 'MemberProjects',
-          component: () => import('@/views/member/project/ProjectList.vue'),
+          component: () => import('@/views/member/project/ProjectList.vue')
         },
         {
-          path: 'projects/create', // Chức năng Tạo dự án (CN_11) - Phải nằm trên :id
-          name: 'ProjectCreate',
-          component: () => import('@/views/member/project/ProjectForm.vue'),
-        },
-        {
-          path: 'projects/edit/:id', // Chức năng Sửa dự án (CN_12)
-          name: 'ProjectEdit',
-          component: () => import('@/views/member/project/ProjectForm.vue'),
-        },
-        {
-          path: 'projects/:id', // Chức năng Xem chi tiết (CN_14)
+          path: 'projects/:id',
           name: 'ProjectDetail',
-          component: () => import('@/views/member/project/ProjectDetail.vue'),
+          component: () => import('@/views/member/project/ProjectDetail.vue')
         },
-        // Quản lý Task
         {
           path: 'tasks',
           name: 'MemberTasks',
-          component: () => import('@/views/member/task/TaskList.vue'),
+          component: () => import('@/views/member/task/TaskList.vue')
         },
         {
           path: 'tasks/:id',
           name: 'TaskDetail',
-          component: () => import('@/views/member/task/TaskDetail.vue'),
+          component: () => import('@/views/member/task/TaskDetail.vue')
         },
-        // Khác
         {
           path: 'notifications',
           name: 'Notifications',
-          component: () => import('@/views/notification/NotificationList.vue'),
+          component: () => import('@/views/member/notifications/NotificationList.vue')
         },
         {
           path: 'profile',
           name: 'Profile',
-          component: () => import('@/views/user/Profile.vue'),
-        },
-      ],
+          component: () => import('@/views/shared/Profile.vue')
+        }
+      ]
     },
 
-    // Admin route
+    // Admin/Manager routes - dùng AdminLayout
     {
       path: '/admin',
-      component: () => import('@/layouts/AdminLayout.vue'),
-      meta: { requiresAuth: true, requiresRole: ['ADMIN', 'MANAGER'] },
+      component: AdminLayout,
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
           name: 'AdminDashboard',
-          component: () => import('@/views/admin/Dashboard.vue'),
+          component: () => import('@/views/admin/AdminDashboard.vue')
         },
-      ],
+        {
+          path: 'users',
+          name: 'UserManagement',
+          component: () => import('@/views/admin/UserManagement.vue')
+        },
+        {
+          path: 'projects',
+          name: 'ProjectManagement',
+          component: () => import('@/views/admin/ProjectManagement.vue')
+        },
+        {
+          path: 'tasks',
+          name: 'TaskManagement',
+          component: () => import('@/views/admin/TaskManagement.vue')
+        },
+        {
+          path: 'notifications',
+          name: 'NotificationManagement',
+          component: () => import('@/views/admin/NotificationManagement.vue')
+        },
+        {
+          path: 'reports',
+          name: 'ReportManagement',
+          component: () => import('@/views/admin/ReportManagement.vue')
+        }
+      ]
     },
-  ],
+
+    // Redirect nếu không khớp
+    { path: '/:pathMatch(.*)*', redirect: '/login' }
+  ]
 })
 
-// Navigation Guard (Bảo vệ route)
+// Navigation Guard
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
+
+  if (!authStore.isAuthenticated) {
+    authStore.initializeAuth()
+  }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return next('/login')

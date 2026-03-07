@@ -131,7 +131,7 @@ const handleSubmit = async () => {
     await projectStore.create(form.value);
     router.push('/projects');
   } catch (error) {
-    alert("Lỗi: " + (error.response?.data?.message || "Không có quyền tạo dự án"));
+    alert("Lỗi: " + (error || "Không có quyền tạo dự án"));
   } finally {
     loading.value = false;
   }
