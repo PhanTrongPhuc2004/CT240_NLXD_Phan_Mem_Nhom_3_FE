@@ -1,4 +1,3 @@
-<!-- src\views\member\project\ProjectForm.vue -->
 <template>
   <v-container class="py-10">
     <v-row justify="center">
@@ -132,7 +131,7 @@ const handleSubmit = async () => {
     await projectStore.create(form.value);
     router.push('/projects');
   } catch (error) {
-    alert("Lỗi: " + (error || "Không có quyền tạo dự án"));
+    alert("Lỗi: " + (error.response?.data?.message || "Không có quyền tạo dự án"));
   } finally {
     loading.value = false;
   }
@@ -153,4 +152,4 @@ const handleSubmit = async () => {
 .upload-box:hover {
   background-color: #f5f5f5 !important;
 }
-</style>
+</style>s
