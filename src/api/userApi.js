@@ -20,3 +20,17 @@ export const updateUser = (id, data) => api.put(`/users/${id}`, data)
 export const deleteUser = (id) => api.delete(`/users/${id}`)
 
 export const updateRole = (id, role) => api.patch(`/users/${id}/role`, { role })
+
+export const userApi = {
+    login,
+    register,
+    getCurrentUser,
+    getProfile,
+    updateProfile,
+    getAll: getAllUsers,
+    getAllUsers,
+    createUser,
+    updateUser,
+    deleteUser,
+    updateRole
+}
