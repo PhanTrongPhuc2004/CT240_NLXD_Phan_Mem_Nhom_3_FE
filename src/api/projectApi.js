@@ -1,16 +1,14 @@
-// D:\Documents\Study\CT240\Project\FrontEnd\src\api\projectApi.js
+// src/api/projectApi.js - ĐÃ SỬA: endpoint tạo dự án đúng là /projects (POST)
 import api from './index'
 
 export const projectApi = {
   getAll: () => api.get('/projects'),
   getById: (id) => api.get(`/projects/${id}`),
-  create: (data) => api.post('/projects', data),
+  create: (data) => api.post('/projects', data), 
   update: (id, data) => api.put(`/projects/${id}`, data),
   delete: (id) => api.delete(`/projects/${id}`),
 
-  // --- Bổ sung các hàm cho CN_15 & CN_16 ---
-
-  // Quản lý Manager (Truyền body: { userId: "..." })
+  // Quản lý Manager
   assignManager: (projectId, data) => api.post(`/projects/${projectId}/managers`, data),
   removeManager: (projectId, userId) => api.delete(`/projects/${projectId}/managers/${userId}`),
 

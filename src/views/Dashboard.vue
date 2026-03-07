@@ -14,7 +14,7 @@ const loading = ref(true)
 onMounted(() => {
     const role = authStore.user?.role
 
-    if (role === 'ADMIN' || role === 'MANAGER') {
+    if (role === 'ADMIN' ) {
         router.replace('/admin')
     } else {
         router.replace('/member')   // hoặc '/dashboard' nếu bạn muốn dùng chung
