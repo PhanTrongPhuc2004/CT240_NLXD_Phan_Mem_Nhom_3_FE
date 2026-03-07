@@ -1,6 +1,6 @@
 // src/stores/auth.js - ĐÃ BỔ SUNG HÀM register() để fix lỗi "authStore.register is not a function"
 import { defineStore } from 'pinia'
-import { login, getCurrentUser, register } from '@/api/userApi' // Thêm import register
+import { userApi } from '@/api/userApi'
 import router from '@/router'
 
 export const useAuthStore = defineStore('auth', {
@@ -25,7 +25,7 @@ export const useAuthStore = defineStore('auth', {
             this.error = null
 
             try {
-                const response = await login(credentials)
+                const response = await userApi.login(credentials)
 
                 this.token = response.token || response.data?.token
                 if (!this.token) {
@@ -39,7 +39,7 @@ export const useAuthStore = defineStore('auth', {
                 if (this.user) {
                     localStorage.setItem('auth_user', JSON.stringify(this.user))
                 } else {
-                    await this.fetchCurrentUser()
+                    await this.fetchCurrentUser() // fetchCurrentUser sẽ dùng userApi.getCurrentUser
                 }
 
                 const role = this.userRole
@@ -68,7 +68,7 @@ export const useAuthStore = defineStore('auth', {
             this.error = null
 
             try {
-                const response = await register(registrationData) // Gọi API register
+                const response = await userApi.register(registrationData) // Gọi API register
 
                 // Sau đăng ký thành công, có thể tự động login hoặc redirect đến login
                 this.token = response.token || response.data?.token
@@ -100,7 +100,7 @@ export const useAuthStore = defineStore('auth', {
             if (!this.token) return
 
             try {
-                const userData = await getCurrentUser()
+                const userData = await userApi.getCurrentUser()
                 this.user = userData
                 localStorage.setItem('auth_user', JSON.stringify(this.user))
                 console.log('Fetched user:', this.user)
