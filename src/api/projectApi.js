@@ -30,6 +30,7 @@ export const projectApi = {
 
   // Tham gia / Rời dự án
   requestToJoin: (projectId) => api.post(`/projects/${projectId}/join`),
+  cancelJoinRequest: (projectId) => api.post(`/projects/${projectId}/join/cancel`),
   approveJoin: (projectId, data) => api.post(`/projects/${projectId}/join/approve`, data),
   rejectJoin: (projectId, data) => api.post(`/projects/${projectId}/join/reject`, data),
   leaveProject: (projectId) => api.post(`/projects/${projectId}/leave`),

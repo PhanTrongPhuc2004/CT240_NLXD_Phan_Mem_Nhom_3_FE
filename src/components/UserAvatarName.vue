@@ -8,7 +8,7 @@
 
     <!-- Tên -->
     <span class="text-caption text-grey-darken-1 font-weight-medium">
-      Chủ dự án: {{ displayName }}
+      owner: {{ displayName }}
     </span>
   </div>
 </template>

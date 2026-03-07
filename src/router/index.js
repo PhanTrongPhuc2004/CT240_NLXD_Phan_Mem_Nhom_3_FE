@@ -13,13 +13,13 @@ const router = createRouter({
       path: '/login',
       name: 'Login',
       component: () => import('@/views/auth/Login.vue'),
-      meta: { requiresAuth: false }
+      meta: { requiresAuth: false },
     },
     {
       path: '/register',
       name: 'Register',
       component: () => import('@/views/auth/Register.vue'),
-      meta: { requiresAuth: false }
+      meta: { requiresAuth: false },
     },
 
     // Member routes - dùng MemberLayout
@@ -31,39 +31,44 @@ const router = createRouter({
         {
           path: '',
           name: 'MemberDashboard',
-          component: () => import('@/views/member/MemberDashboard.vue')
+          component: () => import('@/views/member/MemberDashboard.vue'),
         },
         {
           path: 'projects',
           name: 'MemberProjects',
-          component: () => import('@/views/member/project/ProjectList.vue')
+          component: () => import('@/views/member/project/ProjectList.vue'),
+        },
+        {
+          path: 'projects/create',
+          name: 'ProjectCreate',
+          component: () => import('@/views/member/project/ProjectForm.vue'),
         },
         {
           path: 'projects/:id',
           name: 'ProjectDetail',
-          component: () => import('@/views/member/project/ProjectDetail.vue')
+          component: () => import('@/views/member/project/ProjectDetail.vue'),
         },
         {
           path: 'tasks',
           name: 'MemberTasks',
-          component: () => import('@/views/member/task/TaskList.vue')
+          component: () => import('@/views/member/task/TaskList.vue'),
         },
         {
           path: 'tasks/:id',
           name: 'TaskDetail',
-          component: () => import('@/views/member/task/TaskDetail.vue')
+          component: () => import('@/views/member/task/TaskDetail.vue'),
         },
         {
           path: 'notifications',
           name: 'Notifications',
-          component: () => import('@/views/member/notifications/NotificationList.vue')
+          component: () => import('@/views/member/notifications/NotificationList.vue'),
         },
         {
           path: 'profile',
           name: 'Profile',
-          component: () => import('@/views/shared/Profile.vue')
-        }
-      ]
+          component: () => import('@/views/shared/Profile.vue'),
+        },
+      ],
     },
 
     // Admin/Manager routes - dùng AdminLayout
@@ -75,39 +80,45 @@ const router = createRouter({
         {
           path: '',
           name: 'AdminDashboard',
-          component: () => import('@/views/admin/AdminDashboard.vue')
+          component: () => import('@/views/admin/AdminDashboard.vue'),
         },
         {
           path: 'users',
           name: 'UserManagement',
-          component: () => import('@/views/admin/UserManagement.vue')
+          component: () => import('@/views/admin/UserManagement.vue'),
         },
         {
           path: 'projects',
           name: 'ProjectManagement',
-          component: () => import('@/views/admin/ProjectManagement.vue')
+          component: () => import('@/views/admin/ProjectManagement.vue'),
+        },
+        {
+          // Thêm route này để Admin xem chi tiết dự án mà vẫn giữ AdminLayout
+          path: 'projects/:id',
+          name: 'AdminProjectDetail',
+          component: () => import('@/views/member/project/ProjectDetail.vue'),
         },
         {
           path: 'tasks',
           name: 'TaskManagement',
-          component: () => import('@/views/admin/TaskManagement.vue')
+          component: () => import('@/views/admin/TaskManagement.vue'),
         },
         {
           path: 'notifications',
           name: 'NotificationManagement',
-          component: () => import('@/views/admin/NotificationManagement.vue')
+          component: () => import('@/views/admin/NotificationManagement.vue'),
         },
         {
           path: 'reports',
           name: 'ReportManagement',
-          component: () => import('@/views/admin/ReportManagement.vue')
-        }
-      ]
+          component: () => import('@/views/admin/ReportManagement.vue'),
+        },
+      ],
     },
 
     // Redirect nếu không khớp
-    { path: '/:pathMatch(.*)*', redirect: '/login' }
-  ]
+    { path: '/:pathMatch(.*)*', redirect: '/login' },
+  ],
 })
 
 // Navigation Guard

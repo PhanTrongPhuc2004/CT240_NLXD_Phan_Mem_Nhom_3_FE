@@ -138,11 +138,12 @@ const goToCreateProject = () => {
 };
 
 const viewProject = (item) => {
-  router.push(`/projects/${item.id}`);
+  router.push({ path: `/admin/projects/${item.id}` });
 };
 
 const editProject = (item) => {
-  router.push(`/projects/${item.id}/edit`);
+  // Chuyển đến trang chi tiết và mở sẵn tab Cài đặt
+  router.push({ path: `/admin/projects/${item.id}`, query: { tab: 'settings' } });
 };
 
 const confirmDelete = (item) => {
@@ -157,8 +158,12 @@ const closeDelete = () => {
 
 const deleteProjectConfirm = async () => {
   if (projectToDelete.value) {
-    await projectStore.delete(projectToDelete.value.id);
+    try {
+      await projectStore.delete(projectToDelete.value.id);
+      closeDelete(); // Chỉ đóng dialog khi xóa thành công
+    } catch (error) {
+      alert("Lỗi khi xóa dự án: " + (error.response?.data?.message || error.message || "Bạn không có quyền xóa dự án này."));
+    }
   }
-  closeDelete();
 };
 </script>

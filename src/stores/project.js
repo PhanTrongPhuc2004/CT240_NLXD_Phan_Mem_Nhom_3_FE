@@ -72,12 +72,13 @@ export const useProjectStore = defineStore('project', {
     },
 
     async create(data) {
-      const payload = {
-        name: data.name,
-        description: data.description,
-      }
-      const res = await projectApi.create(payload)
+      // 'data' đã chứa tất cả các trường cần thiết (name, description, memberIds, v.v.)
+      const res = await projectApi.create(data)
       this.projects.push(res.data)
+      // Thêm vào danh sách của admin luôn để giao diện cập nhật ngay lập tức
+      if (this.allSystemProjects.length > 0) {
+        this.allSystemProjects.push(res.data)
+      }
       return res.data
     },
 

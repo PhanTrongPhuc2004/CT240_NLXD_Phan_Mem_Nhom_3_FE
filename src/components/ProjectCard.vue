@@ -3,9 +3,13 @@
     <v-card-item>
       <div>
         <div class="text-overline mb-1 d-flex justify-space-between align-center">
-          <v-chip size="x-small" :color="getStatusColor(project.status)" label>
-            {{ project.status }}
-          </v-chip>
+          <div class="d-flex align-center">
+            <v-chip size="x-small" :color="getStatusColor(project.status)" label class="mr-2">
+              {{ project.status }}
+            </v-chip>
+            <v-icon v-if="project.visibility === 'private'" size="small" color="grey" title="Riêng tư">mdi-lock-outline</v-icon>
+            <v-icon v-else-if="project.visibility === 'public'" size="small" color="blue" title="Công khai">mdi-earth</v-icon>
+          </div>
           
           <!-- Hiển thị vai trò của user đối với dự án -->
           <v-chip v-if="isOwner" size="x-small" color="purple" variant="flat">Owner</v-chip>
@@ -25,6 +29,10 @@
       <div class="d-flex align-center mt-2">
         <v-icon icon="mdi-account-group" size="small" class="me-2" color="grey"></v-icon>
         <span class="text-caption text-grey">{{ project.memberIds?.length || 0 }} thành viên</span>
+      </div>
+      <div class="d-flex align-center mt-1">
+        <v-icon icon="mdi-calendar-clock" size="small" class="me-2" color="grey"></v-icon>
+        <span class="text-caption text-grey">Deadline: {{ project.endDate ? new Date(project.endDate).toLocaleDateString('vi-VN') : 'Chưa đặt' }}</span>
       </div>
       
       <!-- SỬ DỤNG COMPONENT MỚI ĐỂ HIỂN THỊ OWNER -->
@@ -112,7 +120,7 @@ import { useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import UserAvatarName from '@/components/UserAvatarName.vue';
-import axios from 'axios';
+import { projectApi } from '@/api/projectApi'; // SỬA: Dùng projectApi thay vì axios trực tiếp
 
 const props = defineProps({ 
   project: { type: Object, required: true }
@@ -184,11 +192,8 @@ const handleCancelRequest = async () => {
   
   loading.value = true;
   try {
-    const token = localStorage.getItem('auth_token');
-    await axios.post(`http://localhost:8080/api/projects/${props.project.id}/join/cancel`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    await projectStore.fetchAll(); // Reload danh sách để cập nhật trạng thái
+    await projectApi.cancelJoinRequest(props.project.id);
+    await projectStore.fetchAll(); // Tải lại danh sách để cập nhật trạng thái
   } catch (error) {
     alert("Lỗi: " + (error.response?.data || error.message));
   } finally {
