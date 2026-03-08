@@ -146,8 +146,12 @@ const closeDelete = () => {
 
 const deleteProjectConfirm = async () => {
   if (projectToDelete.value) {
-    await projectStore.delete(projectToDelete.value.id);
+    try {
+      await projectStore.delete(projectToDelete.value.id);
+      closeDelete(); // Chỉ đóng dialog khi xóa thành công
+    } catch (error) {
+      alert("Lỗi khi xóa dự án: " + (error.response?.data?.message || error.message || "Bạn không có quyền xóa dự án này."));
+    }
   }
-  closeDelete();
 };
 </script>

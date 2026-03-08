@@ -7,7 +7,14 @@
 
     <!-- Error State -->
     <v-row v-else-if="error" class="fill-height" justify="center" align="center">
-      <v-alert type="error" title="Lỗi" :text="error" variant="tonal" class="ma-4"></v-alert>
+      <v-col cols="12" sm="8" md="6" class="text-center">
+        <v-icon size="80" color="grey-lighten-2" class="mb-4">mdi-alert-circle-outline</v-icon>
+        <h2 class="text-h5 font-weight-bold text-grey-darken-3 mb-2">Không tìm thấy dự án</h2>
+        <p class="text-body-1 text-grey mb-6">{{ error }}</p>
+        <v-btn color="primary" variant="flat" size="large" @click="goBack">
+          Quay lại danh sách
+        </v-btn>
+      </v-col>
     </v-row>
 
     <!-- Content -->
@@ -16,11 +23,19 @@
       <v-card flat color="grey-lighten-4" class="px-6 py-4 rounded-0 border-b">
         <div class="d-flex align-center justify-space-between">
           <div>
+            <!-- Nút Quay lại thông minh -->
+            <v-btn variant="text" prepend-icon="mdi-arrow-left" class="mb-2 px-0" color="grey-darken-2" @click="goBack">
+              {{ isAdmin ? 'Quay lại trang Quản lý' : 'Quay lại Danh sách' }}
+            </v-btn>
+
             <div class="d-flex align-center mb-2">
-              <h1 class="text-h4 font-weight-bold text-primary mr-4">{{ project?.name || 'Tạo dự án mới' }}</h1>
+              <h1 class="text-h4 font-weight-bold text-primary mr-4">{{ project?.name }}</h1>
               <v-chip v-if="project?.status" :color="getStatusColor(project?.status)" label size="small"
-                class="font-weight-bold">
+                class="font-weight-bold mr-2">
                 {{ project?.status }}
+              </v-chip>
+              <v-chip v-if="project?.visibility" :color="project?.visibility === 'public' ? 'blue' : 'grey'" label size="small" class="font-weight-bold" :prepend-icon="project?.visibility === 'public' ? 'mdi-earth' : 'mdi-lock'">
+                {{ project?.visibility === 'public' ? 'Công khai' : 'Riêng tư' }}
               </v-chip>
             </div>
             <p class="text-body-1 text-grey-darken-1" style="max-width: 800px;">
@@ -30,21 +45,21 @@
 
           <!-- Action Buttons -->
           <div class="d-flex gap-2">
-            <v-btn v-if="isOwner && !isNewProject" prepend-icon="mdi-cog" variant="outlined" color="primary"
+            <!-- <v-btn v-if="isOwner || isAdmin" prepend-icon="mdi-cog" variant="outlined" color="primary"
               @click="activeTab = 'settings'">
               Cài đặt
-            </v-btn>
-            <v-btn v-if="isMember && !isOwner && !isNewProject" prepend-icon="mdi-logout" variant="outlined"
+            </v-btn> -->
+            <v-btn v-if="isMember && !isOwner" prepend-icon="mdi-logout" variant="outlined"
               color="error" @click="handleLeaveProject">
               Rời dự án
             </v-btn>
             <!-- Nút Hủy yêu cầu cho người đang chờ duyệt -->
-            <v-btn v-if="isPending && !isNewProject" prepend-icon="mdi-close-circle" variant="outlined" color="warning"
+            <v-btn v-if="isPending" prepend-icon="mdi-close-circle" variant="outlined" color="warning"
               @click="handleCancelRequest">
               Hủy yêu cầu
             </v-btn>
             <!-- Nút Xin tham gia cho người chưa tham gia -->
-            <v-btn v-if="!isMember && !isOwner && !isPending && !isNewProject" prepend-icon="mdi-login"
+            <v-btn v-if="!isMember && !isOwner && !isPending && !isAdmin" prepend-icon="mdi-login"
               variant="elevated" color="primary" @click="handleJoinProject">
               Xin tham gia
             </v-btn>
@@ -52,7 +67,7 @@
         </div>
 
         <!-- Thống kê nhanh -->
-        <div v-if="!isNewProject" class="d-flex mt-6 gap-6">
+        <div class="d-flex mt-6 gap-6">
           <div class="d-flex align-center">
             <v-avatar color="primary" size="32" class="mr-2">
               <v-icon size="18" color="white">mdi-account-group</v-icon>
@@ -72,12 +87,25 @@
             </div>
           </div>
           <div class="d-flex align-center ml-6">
+            <v-avatar color="info" size="32" class="mr-2">
+              <v-icon size="18" color="white">mdi-calendar-start</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-caption text-grey">Ngày bắt đầu</div>
+              <div class="font-weight-bold">
+                {{ project?.startDate ? new Date(project.startDate).toLocaleDateString('vi-VN') : 'Chưa đặt' }}
+              </div>
+            </div>
+          </div>
+          <div class="d-flex align-center ml-6">
             <v-avatar color="warning" size="32" class="mr-2">
               <v-icon size="18" color="white">mdi-clock-outline</v-icon>
             </v-avatar>
             <div>
               <div class="text-caption text-grey">Hạn chót</div>
-              <div class="font-weight-bold">--/--/----</div> <!-- TODO: Bind real data -->
+              <div class="font-weight-bold">
+                {{ project?.endDate ? new Date(project.endDate).toLocaleDateString('vi-VN') : 'Chưa đặt' }}
+              </div>
             </div>
           </div>
         </div>
@@ -86,9 +114,9 @@
       <!-- Tabs Navigation -->
       <v-tabs v-model="activeTab" color="primary" bg-color="white" class="border-b px-6">
         <v-tab value="overview">Tổng quan</v-tab>
-        <v-tab value="tasks" v-if="isMember || isOwner">Công việc</v-tab>
+        <v-tab value="tasks" v-if="isMember || isOwner || isAdmin">Công việc</v-tab>
         <v-tab value="members">Thành viên</v-tab>
-        <v-tab value="settings" v-if="isOwner">Cài đặt</v-tab>
+        <v-tab value="settings" v-if="isOwner || isAdmin">Cài đặt</v-tab>
       </v-tabs>
 
       <!-- Tab Content -->
@@ -132,31 +160,91 @@
           </v-window-item>
 
           <!-- TAB 2: CÔNG VIỆC (TASKS) -->
-          <v-window-item value="tasks" v-if="isMember || isOwner">
+          <v-window-item value="tasks" v-if="isMember || isOwner || isAdmin">
             <v-card class="pa-4" elevation="1">
               <div class="d-flex justify-space-between align-center mb-4">
-                <h3 class="text-h6">Danh sách công việc</h3>
-                <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateTaskDialog">
+                <h3 class="text-h6">Danh sách công việc ({{ projectTasks.length }})</h3>
+                <v-btn v-if="canManageTasks" color="primary" prepend-icon="mdi-plus" @click="openTaskDialog()">
                   Thêm công việc
                 </v-btn>
               </div>
 
-              <!-- Placeholder cho Task List -->
-              <v-sheet border rounded class="d-flex flex-column align-center justify-center pa-10 bg-grey-lighten-4">
-                <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-clipboard-list-outline</v-icon>
-                <h3 class="text-h6 text-grey-darken-1">Chưa có công việc nào</h3>
-                <p class="text-body-2 text-grey mb-6">Bắt đầu bằng cách tạo công việc đầu tiên cho dự án này.</p>
-                <v-btn color="primary" variant="flat" @click="openCreateTaskDialog">
-                  Tạo công việc ngay
-                </v-btn>
-              </v-sheet>
+              <!-- Bảng danh sách công việc -->
+              <v-data-table :headers="taskHeaders" :items="projectTasks" :loading="loading"
+                no-data-text="Chưa có công việc nào trong dự án này.">
+                
+                <template v-slot:item.title="{ item }">
+                  <span class="font-weight-medium text-primary cursor-pointer" @click="openTaskDialog(item)">
+                    {{ item.title }}
+                  </span>
+                </template>
+
+                <template v-slot:item.assigneeId="{ item }">
+                  <UserAvatarName v-if="item.assigneeId" :user-id="item.assigneeId" />
+                  <span v-else class="text-grey text-caption font-italic">Chưa giao</span>
+                </template>
+
+                <template v-slot:item.status="{ item }">
+                  <v-menu v-if="canUpdateStatus(item)" location="bottom start">
+                    <template v-slot:activator="{ props }">
+                      <v-chip
+                        v-bind="props"
+                        :color="getTaskStatusColor(item.status)"
+                        size="small"
+                        label
+                        class="cursor-pointer font-weight-bold"
+                        append-icon="mdi-chevron-down"
+                        style="min-width: 140px; justify-content: space-between;"
+                      >
+                        {{ item.status }}
+                      </v-chip>
+                    </template>
+                    <v-list density="compact" elevation="2">
+                      <v-list-item
+                        v-for="status in ['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']"
+                        :key="status"
+                        :value="status"
+                        @click="updateTaskStatus(item, status)"
+                      >
+                        <v-list-item-title>
+                          <v-chip :color="getTaskStatusColor(status)" size="x-small" label class="mr-2"></v-chip>
+                          {{ status }}
+                        </v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                  <v-chip
+                    v-else
+                    :color="getTaskStatusColor(item.status)"
+                    size="small"
+                    label
+                    class="font-weight-bold"
+                    style="min-width: 140px; justify-content: center;"
+                  >
+                    {{ item.status }}
+                  </v-chip>
+                </template>
+
+                <template v-slot:item.priority="{ item }">
+                  <v-chip :color="getTaskPriorityColor(item.priority)" size="small" variant="outlined">{{ item.priority }}</v-chip>
+                </template>
+
+                <template v-slot:item.deadline="{ item }">
+                  {{ item.deadline ? new Date(item.deadline).toLocaleDateString('vi-VN') : '' }}
+                </template>
+
+                <template v-slot:item.actions="{ item }">
+                  <v-icon size="small" class="me-2" @click="openTaskDialog(item)">mdi-pencil</v-icon>
+                  <v-icon size="small" color="error" @click="deleteTaskItem(item)">mdi-delete</v-icon>
+                </template>
+              </v-data-table>
             </v-card>
           </v-window-item>
 
           <!-- TAB 3: THÀNH VIÊN -->
           <v-window-item value="members">
             <!-- SECTION: YÊU CẦU THAM GIA (Chỉ hiện cho Owner/Manager) -->
-            <v-card v-if="(isOwner || isManager) && project?.pendingMemberIds?.length > 0"
+            <v-card v-if="(isOwner || isManager || isAdmin) && project?.pendingMemberIds?.length > 0"
               class="pa-4 mb-6 border-warning" elevation="1" variant="outlined" color="orange-lighten-5">
               <div class="d-flex align-center mb-2">
                 <v-icon color="warning" class="mr-2">mdi-account-clock</v-icon>
@@ -189,7 +277,7 @@
             <v-card class="pa-4" elevation="1">
               <div class="d-flex justify-space-between align-center mb-4">
                 <h3 class="text-h6">Thành viên dự án ({{ project?.memberIds?.length || 0 }})</h3>
-                <v-btn v-if="isOwner || isManager" color="primary" prepend-icon="mdi-account-plus"
+                <v-btn v-if="isOwner || isManager || isAdmin" color="primary" prepend-icon="mdi-account-plus"
                   @click="dialogAddMember = true">
                   Thêm thành viên
                 </v-btn>
@@ -214,7 +302,7 @@
                   <template v-slot:append>
                     <v-chip color="blue" size="small" label class="mr-2">Manager</v-chip>
 
-                    <v-menu v-if="isOwner">
+                    <v-menu v-if="isOwner || isAdmin">
                       <template v-slot:activator="{ props }">
                         <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props"></v-btn>
                       </template>
@@ -242,12 +330,12 @@
                     <UserAvatarName :user-id="memberId" />
                   </template>
                   <template v-slot:append>
-                    <v-menu v-if="isOwner || isManager">
+                    <v-menu v-if="isOwner || isManager || isAdmin">
                       <template v-slot:activator="{ props }">
                         <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props"></v-btn>
                       </template>
                       <v-list dense>
-                        <v-list-item v-if="isOwner" @click="promoteToManager(memberId)">
+                        <v-list-item v-if="isOwner || isAdmin" @click="promoteToManager(memberId)">
                           <template v-slot:prepend>
                             <v-icon color="success">mdi-account-arrow-up</v-icon>
                           </template>
@@ -268,13 +356,32 @@
           </v-window-item>
 
           <!-- TAB 4: CÀI ĐẶT (OWNER ONLY) -->
-          <v-window-item value="settings" v-if="isOwner">
+          <v-window-item value="settings" v-if="isOwner || isAdmin">
             <v-card class="pa-6" elevation="1">
               <h3 class="text-h6 mb-4">Cài đặt dự án</h3>
               <v-form @submit.prevent="updateProjectInfo">
                 <v-text-field v-model="editForm.name" label="Tên dự án" variant="outlined" class="mb-4"></v-text-field>
                 <v-textarea v-model="editForm.description" label="Mô tả" variant="outlined" rows="4"
-                  class="mb-4"></v-textarea>
+                  class="mb-4">
+                </v-textarea>
+
+                <v-row>
+                  <v-col cols="12" sm="6">
+                    <v-text-field v-model="editForm.startDate" label="Ngày bắt đầu" type="date" variant="outlined"></v-text-field>
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-text-field v-model="editForm.endDate" label="Ngày kết thúc" type="date" variant="outlined" :min="editForm.startDate"></v-text-field>
+                  </v-col>
+                </v-row>
+
+                <div class="mb-4">
+                  <div class="text-subtitle-2 mb-2">Khả năng hiển thị</div>
+                  <v-radio-group v-model="editForm.visibility" inline>
+                    <v-radio label="Công khai" value="public"></v-radio>
+                    <v-radio label="Riêng tư" value="private"></v-radio>
+                  </v-radio-group>
+                </div>
+
                 <div class="d-flex justify-end">
                   <v-btn color="primary" type="submit" :loading="updating">Lưu thay đổi</v-btn>
                 </div>
@@ -296,6 +403,66 @@
         </v-window>
       </v-container>
     </div>
+
+    <!-- Dialog Tạo/Sửa Task -->
+    <v-dialog v-model="dialogTask" max-width="700px">
+      <v-card>
+        <v-card-title>
+          <span class="text-h5">{{ dialogTitle }}</span>
+        </v-card-title>
+
+        <v-card-text>
+          <v-container>
+            <v-row>
+              <v-col cols="12">
+                <v-text-field v-model="editedTask.title" label="Tiêu đề công việc" required variant="outlined" :readonly="!canManageTasks"></v-text-field>
+              </v-col>
+              <v-col cols="12">
+                <v-textarea v-model="editedTask.description" label="Mô tả" rows="3" variant="outlined" :readonly="!canManageTasks"></v-textarea>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-autocomplete
+                  v-model="editedTask.assigneeId"
+                  :items="projectMembersList"
+                  item-title="fullName"
+                  item-value="id"
+                  label="Giao cho"
+                  variant="outlined"
+                  clearable
+                  :readonly="!canManageTasks"
+                ></v-autocomplete>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="editedTask.priority"
+                  :items="['LOW', 'MEDIUM', 'HIGH']"
+                  label="Độ ưu tiên"
+                  variant="outlined"
+                  :readonly="!canManageTasks"
+                ></v-select>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="editedTask.status"
+                  :items="['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']"
+                  label="Trạng thái"
+                  variant="outlined"
+                ></v-select>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field v-model="editedTask.deadline" label="Hạn chót" type="datetime-local" variant="outlined" :readonly="!canManageTasks"></v-text-field>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey" variant="text" @click="closeTaskDialog">{{ canManageTasks ? 'Hủy' : 'Đóng' }}</v-btn>
+          <v-btn v-if="canManageTasks" color="primary" variant="text" @click="saveTask">Lưu</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Dialog Thêm thành viên -->
     <v-dialog v-model="dialogAddMember" max-width="500">
@@ -340,6 +507,7 @@ import { ref, onMounted, computed, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
+import { useTaskStore } from '@/stores/task';
 import { projectApi } from '@/api/projectApi';
 import { userApi } from '@/api/userApi';
 import UserAvatarName from '@/components/UserAvatarName.vue';
@@ -348,6 +516,7 @@ const route = useRoute();
 const router = useRouter();
 const projectStore = useProjectStore();
 const authStore = useAuthStore();
+const taskStore = useTaskStore();
 
 const activeTab = ref('overview');
 const loading = ref(true);
@@ -366,9 +535,18 @@ const searchResults = ref([]);
 const searching = ref(false);
 let searchTimeout = null;
 
+// State cho Task
+const dialogTask = ref(false);
+const defaultTask = { id: '', title: '', description: '', projectId: '', assigneeId: null, priority: 'MEDIUM', status: 'TO_DO', deadline: null };
+const editedTask = ref({ ...defaultTask });
+const allUsers = ref([]); // Để load danh sách thành viên cho dropdown task
+
 const editForm = reactive({
   name: '',
-  description: ''
+  description: '',
+  startDate: '',
+  endDate: '',
+  visibility: 'private'
 });
 
 // Computed Properties
@@ -379,13 +557,57 @@ const isOwner = computed(() => project.value?.ownerId === currentUserId.value ||
 const isManager = computed(() => project.value?.managerIds?.includes(currentUserId.value));
 const isMember = computed(() => project.value?.memberIds?.includes(currentUserId.value));
 const isPending = computed(() => project.value?.pendingMemberIds?.includes(currentUserId.value));
-const isNewProject = computed(() => route.params.id === 'create');
+const isAdmin = computed(() => authStore.userRole === 'ADMIN');
+const canManageTasks = computed(() => isAdmin.value || isOwner.value || isManager.value);
+
+const canUpdateStatus = (task) => {
+  // Admin, Owner, Manager có quyền sửa tất cả
+  if (canManageTasks.value) return true;
+  // Member chỉ được sửa task được giao cho mình
+  return task.assigneeId === currentUserId.value;
+};
+
+const dialogTitle = computed(() => {
+  if (!editedTask.value.id) return 'Thêm công việc mới';
+  return canManageTasks.value ? 'Chỉnh sửa công việc' : 'Chi tiết công việc';
+});
+
+const taskHeaders = computed(() => {
+  const headers = [
+    { title: 'Tiêu đề', key: 'title' },
+    { title: 'Người thực hiện', key: 'assigneeId' },
+    { title: 'Trạng thái', key: 'status', width: '180px' },
+    { title: 'Ưu tiên', key: 'priority' },
+    { title: 'Hạn chót', key: 'deadline' },
+  ];
+  if (canManageTasks.value) {
+    headers.push({ title: 'Hành động', key: 'actions', sortable: false, align: 'end' });
+  }
+  return headers;
+});
 
 // Lọc danh sách member để không hiển thị trùng với Owner và Manager
 const filteredMembers = computed(() => {
   if (!project.value) return [];
   const excludeIds = [project.value.ownerId, ...(project.value.managerIds || [])];
   return project.value.memberIds.filter(id => !excludeIds.includes(id));
+});
+
+// Lọc danh sách Task thuộc dự án này
+const projectTasks = computed(() => {
+  if (!project.value) return [];
+  return taskStore.tasks.filter(t => t.projectId === project.value.id);
+});
+
+// Lấy danh sách user object của các thành viên trong dự án (để hiển thị trong dropdown giao việc)
+const projectMembersList = computed(() => {
+  if (!project.value || allUsers.value.length === 0) return [];
+  const allMemberIds = [
+    project.value.ownerId,
+    ...(project.value.managerIds || []),
+    ...(project.value.memberIds || [])
+  ];
+  return allUsers.value.filter(u => allMemberIds.includes(u.id));
 });
 
 // Methods
@@ -398,26 +620,63 @@ const getStatusColor = (status) => {
   }
 };
 
+const getTaskStatusColor = (status) => {
+    if (status === 'DONE') return 'success'
+    if (status === 'IN_PROGRESS') return 'info'
+    if (status === 'CANCELLED') return 'error'
+    return 'default'
+};
+
+const getTaskPriorityColor = (priority) => {
+    if (priority === 'HIGH') return 'red'
+    if (priority === 'MEDIUM') return 'orange'
+    return 'green'
+};
+
 const getInitials = (name) => {
   if (!name) return '';
   return name.charAt(0).toUpperCase();
 };
 
-const loadProjectData = async () => {
-  // Nếu là tạo mới (id = 'create') → không load project cũ
-  if (isNewProject.value) {
-    loading.value = false;
-    return;
+const goBack = () => {
+  if (isAdmin.value) {
+    router.push('/admin/projects');
+  } else {
+    router.push('/projects');
   }
+};
 
+const loadProjectData = async () => {
   loading.value = true;
   error.value = null;
   try {
     const res = await projectApi.getById(route.params.id);
+    
+    // Kiểm tra quyền truy cập: Nếu Private thì chỉ Owner, Admin hoặc Member mới được xem
+    const p = res.data;
+    if (p.visibility === 'private') {
+      const uid = authStore.user?.id;
+      const isOwner = p.ownerId === uid;
+      const isMember = p.memberIds?.includes(uid);
+      const isAdmin = authStore.userRole === 'ADMIN';
+
+      if (!isOwner && !isAdmin && !isMember) {
+        throw new Error("Dự án này là riêng tư. Bạn không có quyền truy cập.");
+      }
+    }
+
     project.value = res.data;
 
     editForm.name = res.data.name;
     editForm.description = res.data.description;
+    // Cắt chuỗi ISO (YYYY-MM-DDTHH:mm:ss) lấy phần ngày YYYY-MM-DD để hiển thị vào input type="date"
+    editForm.startDate = res.data.startDate ? res.data.startDate.split('T')[0] : '';
+    editForm.endDate = res.data.endDate ? res.data.endDate.split('T')[0] : '';
+    editForm.visibility = res.data.visibility || 'private';
+
+    // Load tasks và users
+    taskStore.fetchAll(); 
+    fetchAllUsers();
   } catch (err) {
     console.error(err);
     error.value = "Không thể tải thông tin dự án. Có thể dự án không tồn tại hoặc bạn không có quyền truy cập.";
@@ -426,10 +685,25 @@ const loadProjectData = async () => {
   }
 };
 
+const fetchAllUsers = async () => {
+  try {
+    const res = await api.get('/users');
+    allUsers.value = res.data;
+  } catch (e) {
+    console.error("Lỗi load users:", e);
+  }
+}
+
 const updateProjectInfo = async () => {
   updating.value = true;
   try {
-    await projectStore.update(project.value.id, editForm);
+    // Chuẩn bị payload, format lại ngày tháng thêm giờ để gửi về Backend
+    const payload = {
+      ...editForm,
+      startDate: editForm.startDate ? `${editForm.startDate}T00:00:00` : null,
+      endDate: editForm.endDate ? `${editForm.endDate}T23:59:59` : null,
+    };
+    await projectStore.update(project.value.id, payload);
     await loadProjectData();
     alert("Cập nhật thành công!");
   } catch (err) {
@@ -441,11 +715,17 @@ const updateProjectInfo = async () => {
 
 const deleteProject = async () => {
   if (!confirm("CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn dự án này?")) return;
+  
   try {
     await projectStore.delete(project.value.id);
-    router.push('/projects');
+    // Kiểm tra quyền để điều hướng về đúng trang
+    if (isAdmin.value) {
+      router.replace('/admin/projects'); // Dùng replace để không back lại được trang đã xóa
+    } else {
+      router.replace('/projects');
+    }
   } catch (err) {
-    alert("Lỗi xóa dự án: " + err.message);
+    alert(`Lỗi xóa dự án (ID: ${project.value.id}): ` + (err.response?.data?.message || err.message || "Backend từ chối quyền xóa (403)."));
   }
 };
 
@@ -577,8 +857,78 @@ const promoteToManager = async (userId) => {
   }
 };
 
-const openCreateTaskDialog = () => {
-  alert("Chức năng tạo Task sẽ được phát triển tiếp theo!");
+const openTaskDialog = (item = null) => {
+  if (!item && !canManageTasks.value) {
+    alert("Bạn không có quyền tạo công việc mới.");
+    return;
+  }
+
+  if (item) {
+    // Edit mode
+    editedTask.value = { ...item }; // Clone object
+  } else {
+    // Create mode
+    editedTask.value = { ...defaultTask, projectId: project.value.id };
+  }
+  dialogTask.value = true;
+};
+
+const closeTaskDialog = () => {
+  dialogTask.value = false;
+  editedTask.value = { ...defaultTask };
+};
+
+const saveTask = async () => {
+  if (!canManageTasks.value) return;
+  
+  if (!editedTask.value.title) {
+    alert("Vui lòng nhập tiêu đề công việc");
+    return;
+  }
+
+  // Format deadline
+  if (editedTask.value.deadline && editedTask.value.deadline.length === 16) {
+      editedTask.value.deadline += ':00';
+  }
+
+  try {
+    if (editedTask.value.id) {
+      await taskStore.update(editedTask.value.id, editedTask.value);
+    } else {
+      await taskStore.create(editedTask.value);
+    }
+    closeTaskDialog();
+    // taskStore.fetchAll() được gọi tự động hoặc reactive update
+  } catch (err) {
+    alert("Lỗi lưu công việc: " + (err.response?.data?.message || err.message));
+  }
+};
+
+const updateTaskStatus = async (task, newStatus) => {
+  if (task.status === newStatus) return;
+  const oldStatus = task.status;
+  task.status = newStatus; // Cập nhật UI ngay lập tức để phản hồi nhanh
+
+  try {
+    // Sử dụng updateStatus chuyên biệt để tránh lỗi 403 (Member có thể update status nhưng không update được toàn bộ task)
+    await taskStore.updateStatus(task.id, newStatus, null);
+  } catch (err) {
+    task.status = oldStatus; // Hoàn tác nếu lỗi
+    alert("Lỗi cập nhật trạng thái: " + (err.response?.data?.message || err.message));
+  }
+};
+
+const deleteTaskItem = async (item) => {
+  if (!canManageTasks.value) {
+    alert("Bạn không có quyền xóa công việc này.");
+    return;
+  }
+  if (!confirm("Bạn có chắc muốn xóa công việc này?")) return;
+  try {
+    await taskStore.delete(item.id);
+  } catch (err) {
+    alert("Lỗi xóa: " + err.message);
+  }
 };
 
 onMounted(() => {

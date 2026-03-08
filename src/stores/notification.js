@@ -8,8 +8,36 @@ export const useNotificationStore = defineStore('notification', {
     }),
 
     actions: {
-        async fetchAll() { /* TODO: CN_27 */ },
-        async markAsRead(id) { /* TODO: CN_28 */ },
-        async markAllAsRead() { /* TODO: CN_28 */ },
+        async fetchAll(userId) {
+
+            const res = await notificationApi.getAll(userId)
+
+            this.notifications = res.data
+
+            this.unreadCount =
+                this.notifications.filter(n => !n.read).length
+        },
+
+        async markAsRead(id, userId) {
+
+            await notificationApi.markAsRead(id, userId)
+
+            const n = this.notifications.find(n => n.id === id)
+
+            if (n) {
+                n.read = true
+            }
+
+            this.unreadCount--
+        },
+
+        async markAllAsRead(userId) {
+
+            await notificationApi.markAllAsRead(userId)
+
+            this.notifications.forEach(n => n.read = true)
+
+            this.unreadCount = 0
+        }
     }
 })

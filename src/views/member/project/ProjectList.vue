@@ -7,6 +7,7 @@
       </v-toolbar-title>
       <v-spacer />
       <v-btn 
+        v-if="authStore.userRole === 'ADMIN'"
         color="primary" 
         prepend-icon="mdi-plus" 
         variant="elevated"
@@ -45,12 +46,29 @@
 <script setup>
 import { onMounted, computed } from 'vue'
 import { useProjectStore } from '@/stores/project'
+import { useAuthStore } from '@/stores/auth'
 import ProjectCard from '@/components/ProjectCard.vue'
 
 const projectStore = useProjectStore()
+const authStore = useAuthStore()
 
 // Lấy dữ liệu từ Pinia Store
-const projects = computed(() => projectStore.projects)
+const projects = computed(() => {
+  return projectStore.projects.filter(p => {
+    // 1. Admin được quyền nhìn thấy tất cả
+    if (authStore.userRole === 'ADMIN') return true;
+
+    // 2. Dự án Public thì ai cũng nhìn thấy (để còn xin tham gia)
+    if (p.visibility === 'public') return true;
+
+    // 3. Dự án Private: Chỉ hiện nếu là Owner hoặc Member
+    const currentUserId = authStore.user?.id;
+    const isOwner = p.ownerId === currentUserId;
+    const isMember = p.memberIds?.includes(currentUserId);
+
+    return isOwner || isMember;
+  });
+})
 
 // Tự động gọi API lấy danh sách từ BE khi vừa vào trang
 onMounted(async () => {

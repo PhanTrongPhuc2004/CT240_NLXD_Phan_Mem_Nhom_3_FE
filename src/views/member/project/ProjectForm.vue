@@ -18,11 +18,11 @@
         </v-tabs>
 
         <!-- Nội dung tab -->
+        <v-form ref="formRef" @submit.prevent="handleSubmit">
         <v-window v-model="activeTab">
           <!-- Tab Tổng quan -->
           <v-window-item value="overview">
             <v-card flat class="pa-6">
-              <v-form ref="formRef" @submit.prevent="handleSubmit">
                 <v-row>
                   <v-col cols="12">
                     <v-text-field v-model="form.name" label="Tên dự án" placeholder="Ví dụ: Dự án Nền tảng E-commerce"
@@ -36,8 +36,13 @@
                   </v-col>
 
                   <v-col cols="12" sm="6">
-                    <v-text-field v-model="form.dateRange" label="Ngày bắt đầu - Ngày kết thúc" type="date"
+                    <v-text-field v-model="form.startDate" label="Ngày bắt đầu" type="date"
                       variant="outlined"></v-text-field>
+                  </v-col>
+
+                  <v-col cols="12" sm="6">
+                    <v-text-field v-model="form.endDate" label="Ngày kết thúc" type="date"
+                      variant="outlined" :min="form.startDate"></v-text-field>
                   </v-col>
 
                   <v-col cols="12" sm="6">
@@ -73,16 +78,16 @@
                     Tạo dự án
                   </v-btn>
                 </div>
-              </v-form>
             </v-card>
           </v-window-item>
 
           <!-- Tab Thành viên -->
           <v-window-item value="members">
             <v-card flat class="pa-6">
-              <v-card-title class="px-0 pt-0 font-weight-bold mb-4">Thành viên ban đầu</v-card-title>
-              <v-autocomplete v-model="form.members" :items="availableUsers" label="Tìm kiếm và thêm thành viên..."
-                variant="outlined" multiple chips closable-chips
+              <v-card-title class="px-0 pt-0 font-weight-bold mb-4">Thêm thành viên vào dự án</v-card-title>
+              <v-autocomplete v-model="form.members" :items="availableUsers" item-title="fullName" item-value="id" label="Tìm kiếm thành viên..."
+                placeholder="Chọn thành viên từ danh sách"
+                variant="outlined" multiple chips closable-chips return-object
                 prepend-inner-icon="mdi-account-search"></v-autocomplete>
 
               <!-- Danh sách thành viên đã thêm (preview) -->
@@ -90,10 +95,11 @@
                 <v-list-item v-for="(member, index) in form.members" :key="index">
                   <template v-slot:prepend>
                     <v-avatar color="primary" size="36">
-                      <span class="text-white">{{ member.charAt(0).toUpperCase() }}</span>
+                      <span class="text-white">{{ getInitials(member.fullName) }}</span>
                     </v-avatar>
                   </template>
-                  <v-list-item-title>{{ member }}</v-list-item-title>
+                  <v-list-item-title>{{ member.fullName }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ member.email }}</v-list-item-subtitle>
                   <template v-slot:append>
                     <v-btn icon="mdi-delete" variant="text" color="error"
                       @click="form.members.splice(index, 1)"></v-btn>
@@ -112,15 +118,19 @@
             </v-card>
           </v-window-item>
         </v-window>
+        </v-form>
       </v-col>
     </v-row>
   </v-container>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
+import { useAuthStore } from '@/stores/auth';
+import api from '@/api/index';
+import { projectApi } from '@/api/projectApi';
 
 const router = useRouter();
 const projectStore = useProjectStore();
@@ -131,13 +141,39 @@ const form = ref({
   name: '',
   description: '',
   visibility: 'private',
-  dateRange: '',
+  startDate: '',
+  endDate: '',
   members: [],
   avatarPreview: null,
   avatarFile: null
 });
 
-const availableUsers = ref(['Alice Smith', 'Bob Johnson', 'Charlie Brown']); // Giả lập - thay bằng API thật sau
+const availableUsers = ref([]);
+
+const authStore = useAuthStore();
+
+onMounted(() => {
+  if (authStore.userRole !== 'ADMIN') {
+    alert('Bạn không có quyền truy cập trang này. Chỉ Admin mới được tạo dự án.');
+    router.push('/projects');
+  }
+  fetchUsers();
+});
+
+const fetchUsers = async () => {
+  try {
+    const res = await api.get('/users');
+    // Lọc bỏ chính mình ra khỏi danh sách (vì mình là Owner rồi)
+    availableUsers.value = res.data.filter(u => u.id !== authStore.user?.id);
+  } catch (error) {
+    console.error("Lỗi tải danh sách user:", error);
+  }
+};
+
+const getInitials = (name) => {
+  if (!name) return '';
+  return name.charAt(0).toUpperCase();
+};
 
 const formRef = ref(null);
 
@@ -155,7 +191,13 @@ const handleFileUpload = (event) => {
 
 const handleSubmit = async () => {
   const { valid } = await formRef.value.validate();
-  if (!valid) return;
+  
+  // SỬA: Nếu form không hợp lệ (ví dụ chưa nhập tên), chuyển về tab Overview để user thấy lỗi
+  if (!valid) {
+    alert("Vui lòng nhập đầy đủ thông tin bắt buộc (Tên dự án) ở tab Tổng quan.");
+    activeTab.value = 'overview';
+    return;
+  }
 
   loading.value = true;
   try {
@@ -163,13 +205,30 @@ const handleSubmit = async () => {
       name: form.value.name,
       description: form.value.description,
       visibility: form.value.visibility,
-      dateRange: form.value.dateRange,
-      members: form.value.members
+      startDate: form.value.startDate ? `${form.value.startDate}T00:00:00` : null,
+      endDate: form.value.endDate ? `${form.value.endDate}T23:59:59` : null,
+      // memberIds: form.value.members.map(m => m.id) // Backend có thể chưa hỗ trợ trường này
       // TODO: Xử lý upload avatar nếu có
     };
 
-    await projectStore.create(payload);
-    router.push('/projects');
+    // 1. Tạo dự án trước
+    const newProject = await projectStore.create(payload);
+    // Đảm bảo lấy được ID dù backend trả về 'id' hay '_id'
+    const newProjectId = newProject.id || newProject._id;
+
+    // 2. Gọi API thêm từng thành viên vào dự án vừa tạo (Workaround lỗi Backend không lưu memberIds)
+    if (form.value.members && form.value.members.length > 0 && newProjectId) {
+      await Promise.all(form.value.members.map(member => 
+        projectApi.assignMember(newProjectId, { userId: member.id })
+      ));
+    }
+
+    // Kiểm tra quyền để điều hướng về đúng trang quản lý
+    if (authStore.userRole === 'ADMIN') {
+      router.push('/admin/projects');
+    } else {
+      router.push('/projects');
+    }
   } catch (error) {
     alert("Lỗi: " + (error.response?.data?.message || "Không thể tạo dự án"));
   } finally {
