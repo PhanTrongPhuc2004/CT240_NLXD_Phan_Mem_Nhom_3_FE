@@ -97,10 +97,10 @@ const projectToDelete = ref(null);
 
 // Gọi API để lấy dữ liệu khi component được mount
 onMounted(async () => {
-  await Promise.all([
-    projectStore.fetchAllSystem(),
-    userStore.fetchAll() // SỬA: Dùng store để lấy user
-  ]);
+  // Gọi song song nhưng catch lỗi riêng để tránh crash toàn bộ nếu 1 API lỗi (đặc biệt là lỗi 500 từ users)
+  const p1 = projectStore.fetchAllSystem().catch(err => console.error("Lỗi tải dự án:", err));
+  const p2 = userStore.fetchAll().catch(err => console.error("Lỗi tải users (có thể do Backend):", err));
+  await Promise.all([p1, p2]);
 });
 
 // Hàm helper để lấy tên từ ID

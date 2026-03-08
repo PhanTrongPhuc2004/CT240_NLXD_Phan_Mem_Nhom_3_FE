@@ -147,7 +147,7 @@ const getStatusColor = (status) => {
 };
 
 const goToDetail = () => {
-  router.push(`/projects/${props.project.id}`);
+  router.push({ name: 'ProjectDetail', params: { id: props.project.id } });
 };
 
 const handleDelete = async () => {

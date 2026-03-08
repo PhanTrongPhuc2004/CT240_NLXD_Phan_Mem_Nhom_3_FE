@@ -25,7 +25,7 @@
           <div>
             <!-- Nút Quay lại thông minh -->
             <v-btn variant="text" prepend-icon="mdi-arrow-left" class="mb-2 px-0" color="grey-darken-2" @click="goBack">
-              {{ isAdmin ? 'Quay lại trang Quản lý' : 'Quay lại Danh sách' }}
+              {{ backButtonLabel }}
             </v-btn>
 
             <div class="d-flex align-center mb-2">
@@ -509,7 +509,7 @@ import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import { useTaskStore } from '@/stores/task';
 import { projectApi } from '@/api/projectApi';
-import { userApi } from '@/api/userApi';
+import api from '@/api/index';
 import UserAvatarName from '@/components/UserAvatarName.vue';
 
 const route = useRoute();
@@ -647,11 +647,19 @@ const getInitials = (name) => {
   return name.charAt(0).toUpperCase();
 };
 
+const backButtonLabel = computed(() => {
+  if (isAdmin.value) return 'Quay lại trang Quản lý';
+  if (route.name === 'MyProjectDetail') return 'Quay lại Dự án của tôi';
+  return 'Quay lại Danh sách';
+});
+
 const goBack = () => {
   if (isAdmin.value) {
     router.push('/admin/projects');
+  } else if (route.name === 'MyProjectDetail') {
+    router.push({ name: 'MyProjects' });
   } else {
-    router.push('/projects');
+    router.push({ name: 'MemberProjects' });
   }
 };
 
@@ -695,13 +703,42 @@ const loadProjectData = async () => {
 };
 
 const fetchAllUsers = async () => {
-  try {
-    const res = await api.get('/users');
-    allUsers.value = res.data;
-  } catch (e) {
-    console.error("Lỗi load users:", e);
+  // Chỉ Admin mới thử lấy toàn bộ danh sách users để tránh lỗi 500/403 với Member
+  if (authStore.userRole === 'ADMIN') {
+    try {
+      const res = await api.get('/users');
+      allUsers.value = res.data;
+      return;
+    } catch (e) {
+      console.warn("Admin không tải được danh sách users, chuyển sang chế độ tải từng người.");
+    }
   }
-}
+
+  // Logic tải từng người (Dành cho Member hoặc khi Admin lỗi)
+  if (!project.value) return;
+
+    const memberIds = [
+      project.value.ownerId,
+      ...(project.value.managerIds || []),
+      ...(project.value.memberIds || [])
+    ].filter(Boolean);
+    
+    const uniqueIds = [...new Set(memberIds)];
+    const loadedUsers = [];
+
+    // Sử dụng Promise.all để tải song song
+    await Promise.all(uniqueIds.map(async (uid) => {
+      try {
+        const uRes = await api.get(`/users/${uid}`);
+        loadedUsers.push(uRes.data);
+      } catch (err) {
+        console.error(`Lỗi tải thông tin user ${uid}:`, err);
+      }
+    }));
+    
+    allUsers.value = loadedUsers;
+  }
+
 
 const updateProjectInfo = async () => {
   updating.value = true;
@@ -731,7 +768,7 @@ const deleteProject = async () => {
     if (isAdmin.value) {
       router.replace('/admin/projects'); // Dùng replace để không back lại được trang đã xóa
     } else {
-      router.replace('/projects');
+      router.replace({ name: 'MemberProjects' });
     }
   } catch (err) {
     alert(`Lỗi xóa dự án (ID: ${project.value.id}): ` + (err.response?.data?.message || err.message || "Backend từ chối quyền xóa (403)."));
@@ -742,7 +779,7 @@ const handleLeaveProject = async () => {
   if (!confirm("Bạn có chắc muốn rời khỏi dự án này?")) return;
   try {
     await projectStore.leaveProject(project.value.id);
-    router.push('/projects');
+    router.push({ name: 'MemberProjects' });
   } catch (err) {
     alert("Lỗi: " + err.message);
   }
@@ -800,14 +837,22 @@ const onSearchUser = async (keyword) => {
   searchTimeout = setTimeout(async () => {
     searching.value = true;
     try {
-      const res = await userApi.search(keyword);
+      console.log(`[DEBUG] Đang gọi API tìm kiếm user với từ khóa: "${keyword}"`);
+      const res = await api.get('/users/search', { params: { keyword } });
+      console.log("[DEBUG] Kết quả tìm kiếm thành công:", res.data);
       searchResults.value = res.data;
     } catch (err) {
-      console.error("Lỗi tìm kiếm:", err);
+      console.error("[DEBUG] Lỗi tìm kiếm:", err);
+      if (err.response) {
+        console.error("[DEBUG] Chi tiết phản hồi lỗi từ Server:", err.response.status, err.response.data);
+      }
+      // Nếu lỗi 500 (Server Error), có thể do backend chưa hỗ trợ search hoặc lỗi quyền hạn
+      // Ta clear kết quả để UI không bị treo loading
+      searchResults.value = [];
     } finally {
       searching.value = false;
     }
-  }, 500);
+  }, 500);  
 };
 
 const addMemberSubmit = async () => {
