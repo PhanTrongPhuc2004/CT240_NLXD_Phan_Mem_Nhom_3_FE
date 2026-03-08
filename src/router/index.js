@@ -43,6 +43,11 @@ const router = createRouter({
           component: () => import('@/views/member/project/ProjectList.vue'),
         },
         {
+          path: 'my-projects',
+          name: 'MyProjects',
+          component: () => import('@/views/member/project/MyProjectList.vue'),
+        },
+        {
           path: 'projects/create',
           name: 'ProjectCreate',
           component: () => import('@/views/member/project/ProjectForm.vue'),

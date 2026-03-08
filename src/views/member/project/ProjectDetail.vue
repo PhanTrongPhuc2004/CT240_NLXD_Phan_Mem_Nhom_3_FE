@@ -83,7 +83,7 @@
             </v-avatar>
             <div>
               <div class="text-caption text-grey">Hoàn thành</div>
-              <div class="font-weight-bold">0/0 Task</div> <!-- TODO: Bind real data -->
+              <div class="font-weight-bold">{{ completedTasksCount }}/{{ projectTasks.length }} Task</div>
             </div>
           </div>
           <div class="d-flex align-center ml-6">
@@ -130,10 +130,10 @@
                 <v-card class="pa-4 h-100" elevation="1">
                   <v-card-title>Tiến độ dự án</v-card-title>
                   <v-card-text class="d-flex flex-column align-center justify-center" style="min-height: 300px;">
-                    <v-progress-circular :model-value="0" :size="150" :width="15" color="primary">
-                      <span class="text-h5 font-weight-bold">0%</span>
+                    <v-progress-circular :model-value="progressPercentage" :size="150" :width="15" color="primary">
+                      <span class="text-h5 font-weight-bold">{{ Math.round(progressPercentage) }}%</span>
                     </v-progress-circular>
-                    <p class="mt-4 text-grey">Chưa có dữ liệu task để tính toán tiến độ.</p>
+                    <p class="mt-4 text-grey">{{ projectTasks.length > 0 ? `Đã hoàn thành ${completedTasksCount}/${projectTasks.length} công việc` : 'Chưa có dữ liệu task để tính toán tiến độ.' }}</p>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -599,6 +599,15 @@ const projectTasks = computed(() => {
   return taskStore.tasks.filter(t => t.projectId === project.value.id);
 });
 
+const completedTasksCount = computed(() => {
+  return projectTasks.value.filter(t => t.status === 'DONE').length;
+});
+
+const progressPercentage = computed(() => {
+  if (projectTasks.value.length === 0) return 0;
+  return (completedTasksCount.value / projectTasks.value.length) * 100;
+});
+
 // Lấy danh sách user object của các thành viên trong dự án (để hiển thị trong dropdown giao việc)
 const projectMembersList = computed(() => {
   if (!project.value || allUsers.value.length === 0) return [];
@@ -886,21 +895,34 @@ const saveTask = async () => {
     return;
   }
 
+  // Clone payload để xử lý dữ liệu trước khi gửi
+  const payload = { ...editedTask.value };
+
+  // Xử lý ID rỗng khi tạo mới (Backend thường không chấp nhận id: "")
+  if (!payload.id) delete payload.id;
+
+  // Xử lý các trường optional để tránh gửi chuỗi rỗng hoặc undefined
+  payload.description = payload.description || null;
+  payload.assigneeId = payload.assigneeId || null;
+
   // Format deadline
-  if (editedTask.value.deadline && editedTask.value.deadline.length === 16) {
-      editedTask.value.deadline += ':00';
+  if (payload.deadline && payload.deadline.length === 16) {
+      payload.deadline += ':00';
+  } else if (!payload.deadline) {
+      payload.deadline = null;
   }
 
   try {
     if (editedTask.value.id) {
-      await taskStore.update(editedTask.value.id, editedTask.value);
+      await taskStore.update(editedTask.value.id, payload);
     } else {
-      await taskStore.create(editedTask.value);
+      await taskStore.create(payload);
     }
     closeTaskDialog();
     // taskStore.fetchAll() được gọi tự động hoặc reactive update
   } catch (err) {
-    alert("Lỗi lưu công việc: " + (err.response?.data?.message || err.message));
+    console.error("Lỗi saveTask:", err);
+    alert("Lỗi lưu công việc: " + (err.response?.data?.message || err.response?.data || err.message));
   }
 };
 
@@ -911,7 +933,7 @@ const updateTaskStatus = async (task, newStatus) => {
 
   try {
     // Sử dụng updateStatus chuyên biệt để tránh lỗi 403 (Member có thể update status nhưng không update được toàn bộ task)
-    await taskStore.updateStatus(task.id, newStatus, null);
+    await taskStore.updateStatus(task.id, newStatus, '');
   } catch (err) {
     task.status = oldStatus; // Hoàn tác nếu lỗi
     alert("Lỗi cập nhật trạng thái: " + (err.response?.data?.message || err.message));
