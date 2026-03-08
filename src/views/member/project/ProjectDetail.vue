@@ -163,21 +163,81 @@
           <v-window-item value="tasks" v-if="isMember || isOwner || isAdmin">
             <v-card class="pa-4" elevation="1">
               <div class="d-flex justify-space-between align-center mb-4">
-                <h3 class="text-h6">Danh sách công việc</h3>
-                <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateTaskDialog">
+                <h3 class="text-h6">Danh sách công việc ({{ projectTasks.length }})</h3>
+                <v-btn v-if="canManageTasks" color="primary" prepend-icon="mdi-plus" @click="openTaskDialog()">
                   Thêm công việc
                 </v-btn>
               </div>
 
-              <!-- Placeholder cho Task List -->
-              <v-sheet border rounded class="d-flex flex-column align-center justify-center pa-10 bg-grey-lighten-4">
-                <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-clipboard-list-outline</v-icon>
-                <h3 class="text-h6 text-grey-darken-1">Chưa có công việc nào</h3>
-                <p class="text-body-2 text-grey mb-6">Bắt đầu bằng cách tạo công việc đầu tiên cho dự án này.</p>
-                <v-btn color="primary" variant="flat" @click="openCreateTaskDialog">
-                  Tạo công việc ngay
-                </v-btn>
-              </v-sheet>
+              <!-- Bảng danh sách công việc -->
+              <v-data-table :headers="taskHeaders" :items="projectTasks" :loading="loading"
+                no-data-text="Chưa có công việc nào trong dự án này.">
+                
+                <template v-slot:item.title="{ item }">
+                  <span class="font-weight-medium text-primary cursor-pointer" @click="openTaskDialog(item)">
+                    {{ item.title }}
+                  </span>
+                </template>
+
+                <template v-slot:item.assigneeId="{ item }">
+                  <UserAvatarName v-if="item.assigneeId" :user-id="item.assigneeId" />
+                  <span v-else class="text-grey text-caption font-italic">Chưa giao</span>
+                </template>
+
+                <template v-slot:item.status="{ item }">
+                  <v-menu v-if="canUpdateStatus(item)" location="bottom start">
+                    <template v-slot:activator="{ props }">
+                      <v-chip
+                        v-bind="props"
+                        :color="getTaskStatusColor(item.status)"
+                        size="small"
+                        label
+                        class="cursor-pointer font-weight-bold"
+                        append-icon="mdi-chevron-down"
+                        style="min-width: 140px; justify-content: space-between;"
+                      >
+                        {{ item.status }}
+                      </v-chip>
+                    </template>
+                    <v-list density="compact" elevation="2">
+                      <v-list-item
+                        v-for="status in ['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']"
+                        :key="status"
+                        :value="status"
+                        @click="updateTaskStatus(item, status)"
+                      >
+                        <v-list-item-title>
+                          <v-chip :color="getTaskStatusColor(status)" size="x-small" label class="mr-2"></v-chip>
+                          {{ status }}
+                        </v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                  <v-chip
+                    v-else
+                    :color="getTaskStatusColor(item.status)"
+                    size="small"
+                    label
+                    class="font-weight-bold"
+                    style="min-width: 140px; justify-content: center;"
+                  >
+                    {{ item.status }}
+                  </v-chip>
+                </template>
+
+                <template v-slot:item.priority="{ item }">
+                  <v-chip :color="getTaskPriorityColor(item.priority)" size="small" variant="outlined">{{ item.priority }}</v-chip>
+                </template>
+
+                <template v-slot:item.deadline="{ item }">
+                  {{ item.deadline ? new Date(item.deadline).toLocaleDateString('vi-VN') : '' }}
+                </template>
+
+                <template v-slot:item.actions="{ item }">
+                  <v-icon size="small" class="me-2" @click="openTaskDialog(item)">mdi-pencil</v-icon>
+                  <v-icon size="small" color="error" @click="deleteTaskItem(item)">mdi-delete</v-icon>
+                </template>
+              </v-data-table>
             </v-card>
           </v-window-item>
 
@@ -344,6 +404,66 @@
       </v-container>
     </div>
 
+    <!-- Dialog Tạo/Sửa Task -->
+    <v-dialog v-model="dialogTask" max-width="700px">
+      <v-card>
+        <v-card-title>
+          <span class="text-h5">{{ dialogTitle }}</span>
+        </v-card-title>
+
+        <v-card-text>
+          <v-container>
+            <v-row>
+              <v-col cols="12">
+                <v-text-field v-model="editedTask.title" label="Tiêu đề công việc" required variant="outlined" :readonly="!canManageTasks"></v-text-field>
+              </v-col>
+              <v-col cols="12">
+                <v-textarea v-model="editedTask.description" label="Mô tả" rows="3" variant="outlined" :readonly="!canManageTasks"></v-textarea>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-autocomplete
+                  v-model="editedTask.assigneeId"
+                  :items="projectMembersList"
+                  item-title="fullName"
+                  item-value="id"
+                  label="Giao cho"
+                  variant="outlined"
+                  clearable
+                  :readonly="!canManageTasks"
+                ></v-autocomplete>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="editedTask.priority"
+                  :items="['LOW', 'MEDIUM', 'HIGH']"
+                  label="Độ ưu tiên"
+                  variant="outlined"
+                  :readonly="!canManageTasks"
+                ></v-select>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="editedTask.status"
+                  :items="['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']"
+                  label="Trạng thái"
+                  variant="outlined"
+                ></v-select>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field v-model="editedTask.deadline" label="Hạn chót" type="datetime-local" variant="outlined" :readonly="!canManageTasks"></v-text-field>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey" variant="text" @click="closeTaskDialog">{{ canManageTasks ? 'Hủy' : 'Đóng' }}</v-btn>
+          <v-btn v-if="canManageTasks" color="primary" variant="text" @click="saveTask">Lưu</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Dialog Thêm thành viên -->
     <v-dialog v-model="dialogAddMember" max-width="500">
       <v-card>
@@ -387,6 +507,7 @@ import { ref, onMounted, computed, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
+import { useTaskStore } from '@/stores/task';
 import { projectApi } from '@/api/projectApi';
 import api from '@/api/index';
 import UserAvatarName from '@/components/UserAvatarName.vue';
@@ -395,6 +516,7 @@ const route = useRoute();
 const router = useRouter();
 const projectStore = useProjectStore();
 const authStore = useAuthStore();
+const taskStore = useTaskStore();
 
 const activeTab = ref('overview');
 const loading = ref(true);
@@ -413,6 +535,12 @@ const searchResults = ref([]);
 const searching = ref(false);
 let searchTimeout = null;
 
+// State cho Task
+const dialogTask = ref(false);
+const defaultTask = { id: '', title: '', description: '', projectId: '', assigneeId: null, priority: 'MEDIUM', status: 'TO_DO', deadline: null };
+const editedTask = ref({ ...defaultTask });
+const allUsers = ref([]); // Để load danh sách thành viên cho dropdown task
+
 const editForm = reactive({
   name: '',
   description: '',
@@ -428,12 +556,56 @@ const isManager = computed(() => project.value?.managerIds?.includes(currentUser
 const isMember = computed(() => project.value?.memberIds?.includes(currentUserId.value));
 const isPending = computed(() => project.value?.pendingMemberIds?.includes(currentUserId.value));
 const isAdmin = computed(() => authStore.userRole === 'ADMIN');
+const canManageTasks = computed(() => isAdmin.value || isOwner.value || isManager.value);
+
+const canUpdateStatus = (task) => {
+  // Admin, Owner, Manager có quyền sửa tất cả
+  if (canManageTasks.value) return true;
+  // Member chỉ được sửa task được giao cho mình
+  return task.assigneeId === currentUserId.value;
+};
+
+const dialogTitle = computed(() => {
+  if (!editedTask.value.id) return 'Thêm công việc mới';
+  return canManageTasks.value ? 'Chỉnh sửa công việc' : 'Chi tiết công việc';
+});
+
+const taskHeaders = computed(() => {
+  const headers = [
+    { title: 'Tiêu đề', key: 'title' },
+    { title: 'Người thực hiện', key: 'assigneeId' },
+    { title: 'Trạng thái', key: 'status', width: '180px' },
+    { title: 'Ưu tiên', key: 'priority' },
+    { title: 'Hạn chót', key: 'deadline' },
+  ];
+  if (canManageTasks.value) {
+    headers.push({ title: 'Hành động', key: 'actions', sortable: false, align: 'end' });
+  }
+  return headers;
+});
 
 // Lọc danh sách member để không hiển thị trùng với Owner và Manager
 const filteredMembers = computed(() => {
   if (!project.value) return [];
   const excludeIds = [project.value.ownerId, ...(project.value.managerIds || [])];
   return project.value.memberIds.filter(id => !excludeIds.includes(id));
+});
+
+// Lọc danh sách Task thuộc dự án này
+const projectTasks = computed(() => {
+  if (!project.value) return [];
+  return taskStore.tasks.filter(t => t.projectId === project.value.id);
+});
+
+// Lấy danh sách user object của các thành viên trong dự án (để hiển thị trong dropdown giao việc)
+const projectMembersList = computed(() => {
+  if (!project.value || allUsers.value.length === 0) return [];
+  const allMemberIds = [
+    project.value.ownerId,
+    ...(project.value.managerIds || []),
+    ...(project.value.memberIds || [])
+  ];
+  return allUsers.value.filter(u => allMemberIds.includes(u.id));
 });
 
 // Methods
@@ -444,6 +616,19 @@ const getStatusColor = (status) => {
     case 'COMPLETED': return 'info';
     default: return 'primary';
   }
+};
+
+const getTaskStatusColor = (status) => {
+    if (status === 'DONE') return 'success'
+    if (status === 'IN_PROGRESS') return 'info'
+    if (status === 'CANCELLED') return 'error'
+    return 'default'
+};
+
+const getTaskPriorityColor = (priority) => {
+    if (priority === 'HIGH') return 'red'
+    if (priority === 'MEDIUM') return 'orange'
+    return 'green'
 };
 
 const getInitials = (name) => {
@@ -486,6 +671,10 @@ const loadProjectData = async () => {
     editForm.startDate = res.data.startDate ? res.data.startDate.split('T')[0] : '';
     editForm.endDate = res.data.endDate ? res.data.endDate.split('T')[0] : '';
     editForm.visibility = res.data.visibility || 'private';
+
+    // Load tasks và users
+    taskStore.fetchAll(); 
+    fetchAllUsers();
   } catch (err) {
     console.error(err);
     error.value = "Không thể tải thông tin dự án. Có thể dự án không tồn tại hoặc bạn không có quyền truy cập.";
@@ -493,6 +682,15 @@ const loadProjectData = async () => {
     loading.value = false;
   }
 };
+
+const fetchAllUsers = async () => {
+  try {
+    const res = await api.get('/users');
+    allUsers.value = res.data;
+  } catch (e) {
+    console.error("Lỗi load users:", e);
+  }
+}
 
 const updateProjectInfo = async () => {
   updating.value = true;
@@ -663,8 +861,78 @@ const promoteToManager = async (userId) => {
   }
 };
 
-const openCreateTaskDialog = () => {
-  alert("Chức năng tạo Task sẽ được phát triển tiếp theo!");
+const openTaskDialog = (item = null) => {
+  if (!item && !canManageTasks.value) {
+    alert("Bạn không có quyền tạo công việc mới.");
+    return;
+  }
+
+  if (item) {
+    // Edit mode
+    editedTask.value = { ...item }; // Clone object
+  } else {
+    // Create mode
+    editedTask.value = { ...defaultTask, projectId: project.value.id };
+  }
+  dialogTask.value = true;
+};
+
+const closeTaskDialog = () => {
+  dialogTask.value = false;
+  editedTask.value = { ...defaultTask };
+};
+
+const saveTask = async () => {
+  if (!canManageTasks.value) return;
+  
+  if (!editedTask.value.title) {
+    alert("Vui lòng nhập tiêu đề công việc");
+    return;
+  }
+
+  // Format deadline
+  if (editedTask.value.deadline && editedTask.value.deadline.length === 16) {
+      editedTask.value.deadline += ':00';
+  }
+
+  try {
+    if (editedTask.value.id) {
+      await taskStore.update(editedTask.value.id, editedTask.value);
+    } else {
+      await taskStore.create(editedTask.value);
+    }
+    closeTaskDialog();
+    // taskStore.fetchAll() được gọi tự động hoặc reactive update
+  } catch (err) {
+    alert("Lỗi lưu công việc: " + (err.response?.data?.message || err.message));
+  }
+};
+
+const updateTaskStatus = async (task, newStatus) => {
+  if (task.status === newStatus) return;
+  const oldStatus = task.status;
+  task.status = newStatus; // Cập nhật UI ngay lập tức để phản hồi nhanh
+
+  try {
+    // Sử dụng updateStatus chuyên biệt để tránh lỗi 403 (Member có thể update status nhưng không update được toàn bộ task)
+    await taskStore.updateStatus(task.id, newStatus, null);
+  } catch (err) {
+    task.status = oldStatus; // Hoàn tác nếu lỗi
+    alert("Lỗi cập nhật trạng thái: " + (err.response?.data?.message || err.message));
+  }
+};
+
+const deleteTaskItem = async (item) => {
+  if (!canManageTasks.value) {
+    alert("Bạn không có quyền xóa công việc này.");
+    return;
+  }
+  if (!confirm("Bạn có chắc muốn xóa công việc này?")) return;
+  try {
+    await taskStore.delete(item.id);
+  } catch (err) {
+    alert("Lỗi xóa: " + err.message);
+  }
 };
 
 onMounted(() => {
