@@ -22,7 +22,7 @@
             <template v-slot:item.status="{ item }">
                 <v-menu location="bottom">
                     <template v-slot:activator="{ props }">
-                        <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small" link class="cursor-pointer">
+                        <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small" link class="cursor-pointer" style="min-width: 140px; justify-content: space-between;">
                             {{ item.status }}
                             <v-icon end size="small">mdi-chevron-down</v-icon>
                         </v-chip>
@@ -90,7 +90,7 @@ const headers = [
     { title: 'Tiêu đề', key: 'title' },
     { title: 'Dự án', key: 'projectId' },
     { title: 'Ưu tiên', key: 'priority' },
-    { title: 'Trạng thái', key: 'status' },
+    { title: 'Trạng thái', key: 'status', width: '180px' },
     { title: 'Hạn chót', key: 'deadline' },
 ]
 
