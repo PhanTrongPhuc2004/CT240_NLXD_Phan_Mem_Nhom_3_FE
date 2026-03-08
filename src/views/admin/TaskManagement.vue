@@ -305,8 +305,8 @@ async function save() {
         payload.deadline += ':00'
     }
 
-    // Tự động thêm thành viên vào dự án nếu chưa có (chỉ dành cho Admin/Manager)
-    if (['ADMIN', 'MANAGER'].includes(authStore.userRole) && payload.assigneeId && payload.projectId) {
+    // Tự động thêm thành viên/quản lý vào dự án nếu chưa có (chỉ dành cho Admin/Manager)
+    if (['ADMIN', 'MANAGER'].includes(authStore.userRole) && payload.projectId) {
         const project = projects.value.find(p => p.id === payload.projectId);
         if (project) {
             const projectMemberIds = [
@@ -315,8 +315,8 @@ async function save() {
                 ...(project.memberIds || [])
             ].filter(Boolean);
 
-            // Nếu người được giao việc CHƯA thuộc dự án
-            if (!projectMemberIds.includes(payload.assigneeId)) {
+            // 1. Xử lý Assignee: Nếu người được giao việc CHƯA thuộc dự án
+            if (payload.assigneeId && !projectMemberIds.includes(payload.assigneeId)) {
                 try {
                     // Tự động gọi API thêm thành viên
                     await projectApi.assignMember(payload.projectId, { userId: payload.assigneeId });
@@ -327,6 +327,22 @@ async function save() {
                     // Cần đảm bảo Backend cho phép Manager làm điều này.
                     alert('Lỗi khi tự động thêm thành viên vào dự án: ' + (err.response?.data || err.message));
                     return; // Dừng lại nếu thêm thất bại
+                }
+            }
+
+            // 2. Xử lý Current User (Manager): Nếu Manager đang sửa task mà chưa thuộc dự án
+            if (authStore.userRole === 'MANAGER') {
+                const currentUserId = authStore.user?.id;
+                const isProjectManager = (project.ownerId === currentUserId) || (project.managerIds || []).includes(currentUserId);
+                
+                if (!isProjectManager) {
+                    try {
+                        // Tự động thêm chính mình làm Manager của dự án để có quyền sửa task
+                        await projectApi.assignManager(payload.projectId, { userId: currentUserId });
+                        await projectStore.fetchAllSystem();
+                    } catch (err) {
+                        console.warn("Không thể tự động thêm Manager vào dự án:", err);
+                    }
                 }
             }
         }
@@ -349,7 +365,11 @@ async function save() {
         close();
     } catch (error) {
         console.error('Lỗi khi lưu công việc:', error);
-        alert('Lưu thất bại: ' + (error.response?.data?.message || error.response?.data || 'Dữ liệu không hợp lệ'));
+        let msg = error.response?.data?.message || error.response?.data || 'Dữ liệu không hợp lệ';
+        if (error.response?.status === 403) {
+            msg = 'Bạn không có quyền chỉnh sửa công việc trong dự án này (Bạn cần là Quản lý dự án).';
+        }
+        alert('Lưu thất bại: ' + msg);
     }
 }
 

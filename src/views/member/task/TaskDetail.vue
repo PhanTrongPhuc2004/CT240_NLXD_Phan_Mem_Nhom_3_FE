@@ -8,9 +8,21 @@
             <v-card-title class="d-flex justify-space-between align-center py-4">
                 <span class="text-h5 font-weight-bold">{{ task.title }}</span>
                 <div>
-                    <v-chip :color="getStatusColor(task.status)" class="mr-2">
-                        {{ task.status }}
-                    </v-chip>
+                    <v-menu location="bottom end">
+                        <template v-slot:activator="{ props }">
+                            <v-chip v-bind="props" :color="getStatusColor(task.status)" class="mr-2 cursor-pointer" link append-icon="mdi-chevron-down">
+                                {{ task.status }}
+                            </v-chip>
+                        </template>
+                        <v-list density="compact">
+                            <v-list-item v-for="status in ['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']" :key="status" :value="status" @click="updateStatus(status)">
+                                <v-list-item-title>
+                                    <v-chip size="x-small" :color="getStatusColor(status)" class="mr-2"></v-chip>
+                                    {{ status }}
+                                </v-list-item-title>
+                            </v-list-item>
+                        </v-list>
+                    </v-menu>
                     <v-chip :color="getPriorityColor(task.priority)" variant="outlined">
                         {{ task.priority }}
                     </v-chip>
@@ -26,6 +38,9 @@
                         <p class="text-body-1 mb-4" style="white-space: pre-line;">
                             {{ task.description || 'Không có mô tả' }}
                         </p>
+
+                        <v-divider class="my-4"></v-divider>
+                        <CommentSection :taskId="task.id" />
                     </v-col>
 
                     <v-col cols="12" md="4">
@@ -69,6 +84,7 @@ import { useTaskStore } from '@/stores/task'
 import { useProjectStore } from '@/stores/project'
 import { useUserStore } from '@/stores/user'
 import { useAuthStore } from '@/stores/auth'
+import CommentSection from '@/components/CommentSection.vue'
 
 const route = useRoute()
 const taskStore = useTaskStore()
@@ -108,6 +124,17 @@ const getPriorityColor = (priority) => {
     if (priority === 'HIGH') return 'red'
     if (priority === 'MEDIUM') return 'orange'
     return 'green'
+}
+
+const updateStatus = async (newStatus) => {
+    if (!task.value || task.value.status === newStatus) return
+    try {
+        await taskStore.updateStatus(task.value.id, newStatus, null)
+        // Load lại chi tiết để cập nhật giao diện
+        await taskStore.getDetail(task.value.id)
+    } catch (error) {
+        alert('Lỗi cập nhật trạng thái: ' + (error.response?.data?.message || error.message))
+    }
 }
 
 onMounted(async () => {
