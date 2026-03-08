@@ -509,7 +509,7 @@ import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import { useTaskStore } from '@/stores/task';
 import { projectApi } from '@/api/projectApi';
-import api from '@/api/index';
+import { userApi } from '@/api/userApi';
 import UserAvatarName from '@/components/UserAvatarName.vue';
 
 const route = useRoute();
@@ -551,7 +551,9 @@ const editForm = reactive({
 
 // Computed Properties
 const currentUserId = computed(() => authStore.user?.id);
-const isOwner = computed(() => project.value?.ownerId === currentUserId.value);
+// SỬA: Chỉ Admin hệ thống mới có quyền như Owner (cài đặt, xóa dự án). Manager chỉ quản lý trong phạm vi được giao.
+const isOwner = computed(() => project.value?.ownerId === currentUserId.value || authStore.userRole === 'ADMIN');
+
 const isManager = computed(() => project.value?.managerIds?.includes(currentUserId.value));
 const isMember = computed(() => project.value?.memberIds?.includes(currentUserId.value));
 const isPending = computed(() => project.value?.pendingMemberIds?.includes(currentUserId.value));
@@ -798,14 +800,8 @@ const onSearchUser = async (keyword) => {
   searchTimeout = setTimeout(async () => {
     searching.value = true;
     try {
-      // WORKAROUND: Dùng API lấy tất cả user và lọc client-side vì API search đang lỗi 500
-      // const res = await api.get('/users/search', { params: { keyword } });
-      const res = await api.get('/users');
-      const k = keyword.toLowerCase();
-      searchResults.value = res.data.filter(u => 
-        (u.fullName && u.fullName.toLowerCase().includes(k)) || 
-        (u.email && u.email.toLowerCase().includes(k))
-      );
+      const res = await userApi.search(keyword);
+      searchResults.value = res.data;
     } catch (err) {
       console.error("Lỗi tìm kiếm:", err);
     } finally {
@@ -958,7 +954,7 @@ const deleteTaskItem = async (item) => {
 };
 
 onMounted(() => {
-  // Tự động chuyển tab nếu có query param từ trang Admin
+  // Nếu có query param tab (ví dụ: ?tab=settings), mở tab đó
   if (route.query.tab) {
     activeTab.value = route.query.tab;
   }

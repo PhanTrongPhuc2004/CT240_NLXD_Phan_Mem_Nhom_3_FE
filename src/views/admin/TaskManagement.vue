@@ -229,7 +229,7 @@ const getPriorityColor = (priority) => {
 
 function goDetail(item) {
     const realItem = item.raw || item
-    router.push(`/tasks/${realItem.id}`)
+    router.push(`/admin/tasks/${realItem.id}`)
 }
 
 // Khi đổi dự án, reset người được giao việc nếu người đó không thuộc dự án mới
