@@ -148,6 +148,19 @@ export const useAuthStore = defineStore('auth', {
         updateUser(userData) {
             this.user = { ...this.user, ...userData }
             localStorage.setItem('auth_user', JSON.stringify(this.user))
+        },
+
+        async updateProfile(profileData) {
+            try {
+                const response = await userApi.updateProfile(profileData)
+                if (response.data) {
+                    this.updateUser(response.data)
+                }
+                return response.data
+            } catch (err) {
+                console.error('Update profile failed in store:', err)
+                throw err
+            }
         }
     }
 })

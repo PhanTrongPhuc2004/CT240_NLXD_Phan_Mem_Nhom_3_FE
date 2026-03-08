@@ -21,16 +21,6 @@ const router = createRouter({
       component: () => import('@/views/auth/Register.vue'),
       meta: { requiresAuth: false },
     },
-    {
-      path: '/profile',
-      name: 'Profile',
-      component: () => import('@/views/profile/ProfileView.vue')
-    },
-    {
-      path: '/profile/edit',
-      name: 'ProfileEdit',
-      component: () => import('@/views/profile/ProfileEdit.vue')
-    },
 
     {
       path: '/',
@@ -92,11 +82,11 @@ const router = createRouter({
           name: 'Profile',
           component: () => import('@/views/profile/ProfileView.vue'),
         },
-        // {
-        //   path: '/profile/edit',
-        //   name: 'ProfileEdit',
-        //   component: () => import('@/views/profile/ProfileEdit.vue')
-        // }
+        {
+          path: '/profile/edit',
+          name: 'ProfileEdit',
+          component: () => import('@/views/profile/ProfileEdit.vue')
+        }
       ],
     },
 

@@ -10,19 +10,16 @@
             <v-card-text class="pa-8">
                 <v-form ref="formRef" @submit.prevent="saveProfile">
                     <v-row>
-                        <!-- Họ và tên -->
                         <v-col cols="12">
                             <v-text-field v-model="form.fullName" label="Họ và tên" prepend-icon="mdi-account" outlined
                                 density="compact" :rules="[rules.required]" />
                         </v-col>
 
-                        <!-- Email -->
                         <v-col cols="12">
                             <v-text-field v-model="form.email" label="Email" prepend-icon="mdi-email" outlined
                                 density="compact" disabled />
                         </v-col>
 
-                        <!-- Ô dán URL ảnh -->
                         <v-col cols="12">
                             <v-text-field v-model="form.avatarUrl" label="Link URL ảnh đại diện" prepend-icon="mdi-link"
                                 outlined density="compact" placeholder="https://example.com/anh-cua-ban.jpg"
@@ -30,7 +27,6 @@
                                 persistent-hint />
                         </v-col>
 
-                        <!-- Preview ảnh -->
                         <v-col cols="12" class="text-center">
                             <v-avatar size="160" class="mb-4" style="border: 4px solid #eee;">
                                 <v-img v-if="form.avatarUrl" :src="form.avatarUrl" cover />
@@ -55,9 +51,11 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { userApi } from '@/api/userApi'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const form = ref({
     fullName: '',
@@ -78,7 +76,9 @@ const loadProfile = async () => {
         form.value.fullName = res.data.fullName || ''
         form.value.email = res.data.email || ''
         form.value.avatarUrl = res.data.avatarUrl || ''
-    } catch (e) { console.error(e) }
+    } catch (e) {
+        console.error(e)
+    }
 }
 
 const saveProfile = async () => {
@@ -87,11 +87,11 @@ const saveProfile = async () => {
 
     saving.value = true
     try {
-        await userApi.updateProfile({
+        await authStore.updateProfile({
             fullName: form.value.fullName,
             avatarUrl: form.value.avatarUrl || null
         })
-        router.push('/profile')
+        router.push('/member/profile')
     } catch (err) {
         console.error(err)
         alert('Lưu không thành công!')
