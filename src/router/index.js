@@ -22,9 +22,13 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
 
-    // Member routes - dùng MemberLayout
     {
       path: '/',
+      redirect: '/member'
+    },
+    // Member routes - dùng MemberLayout
+    {
+      path: '/member',
       component: MemberLayout,
       meta: { requiresAuth: true },
       children: [
@@ -93,6 +97,11 @@ const router = createRouter({
           component: () => import('@/views/admin/TaskManagement.vue')
         },
         {
+          path: 'tasks/:id',
+          name: 'AdminTaskDetail',
+          component: () => import('@/views/member/task/TaskDetail.vue')
+        },
+        {
           path: 'notifications',
           name: 'NotificationManagement',
           component: () => import('@/views/admin/NotificationManagement.vue')
@@ -103,7 +112,7 @@ const router = createRouter({
           component: () => import('@/views/admin/ReportManagement.vue')
         }
       ]
-    },
+    },                                                                           
 
     // Redirect nếu không khớp
     { path: '/:pathMatch(.*)*', redirect: '/login' }

@@ -13,6 +13,8 @@ export const updateProfile = (data) => api.put('/users/me', data)
 
 export const getAllUsers = () => api.get('/users')
 
+export const searchUsers = (keyword) => api.get('/users/search', { params: { keyword } })
+
 export const createUser = (data) => api.post('/users', data)
 
 export const updateUser = (id, data) => api.put(`/users/${id}`, data)
@@ -28,7 +30,7 @@ export const userApi = {
     getProfile,
     updateProfile,
     getAll: getAllUsers,
-    getAllUsers,
+    search: searchUsers,
     createUser,
     updateUser,
     deleteUser,

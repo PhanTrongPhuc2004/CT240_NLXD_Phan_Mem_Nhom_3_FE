@@ -341,6 +341,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import { projectApi } from '@/api/projectApi';
+import { userApi } from '@/api/userApi';
 import UserAvatarName from '@/components/UserAvatarName.vue';
 
 const route = useRoute();
@@ -372,7 +373,9 @@ const editForm = reactive({
 
 // Computed Properties
 const currentUserId = computed(() => authStore.user?.id);
-const isOwner = computed(() => project.value?.ownerId === currentUserId.value);
+// SỬA: Chỉ Admin hệ thống mới có quyền như Owner (cài đặt, xóa dự án). Manager chỉ quản lý trong phạm vi được giao.
+const isOwner = computed(() => project.value?.ownerId === currentUserId.value || authStore.userRole === 'ADMIN');
+
 const isManager = computed(() => project.value?.managerIds?.includes(currentUserId.value));
 const isMember = computed(() => project.value?.memberIds?.includes(currentUserId.value));
 const isPending = computed(() => project.value?.pendingMemberIds?.includes(currentUserId.value));
@@ -508,7 +511,7 @@ const onSearchUser = async (keyword) => {
   searchTimeout = setTimeout(async () => {
     searching.value = true;
     try {
-      const res = await api.get('/users/search', { params: { keyword } });
+      const res = await userApi.search(keyword);
       searchResults.value = res.data;
     } catch (err) {
       console.error("Lỗi tìm kiếm:", err);
@@ -579,6 +582,10 @@ const openCreateTaskDialog = () => {
 };
 
 onMounted(() => {
+  // Nếu có query param tab (ví dụ: ?tab=settings), mở tab đó
+  if (route.query.tab) {
+    activeTab.value = route.query.tab;
+  }
   loadProjectData();
 });
 </script>
