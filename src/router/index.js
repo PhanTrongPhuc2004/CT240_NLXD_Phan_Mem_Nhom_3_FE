@@ -24,7 +24,7 @@ const router = createRouter({
 
     {
       path: '/',
-      redirect: '/member'
+      redirect: '/member',
     },
     // Member routes - dùng MemberLayout
     {
@@ -46,6 +46,11 @@ const router = createRouter({
           path: 'my-projects',
           name: 'MyProjects',
           component: () => import('@/views/member/project/MyProjectList.vue'),
+        },
+        {
+          path: 'my-projects/:id',
+          name: 'MyProjectDetail',
+          component: () => import('@/views/member/project/ProjectDetail.vue'),
         },
         {
           path: 'projects/create',
@@ -102,6 +107,11 @@ const router = createRouter({
           component: () => import('@/views/admin/ProjectManagement.vue'),
         },
         {
+          path: 'projects/create',
+          name: 'AdminProjectCreate',
+          component: () => import('@/views/member/project/ProjectForm.vue'),
+        },
+        {
           // Thêm route này để Admin xem chi tiết dự án mà vẫn giữ AdminLayout
           path: 'projects/:id',
           name: 'AdminProjectDetail',
@@ -115,7 +125,7 @@ const router = createRouter({
         {
           path: 'tasks/:id',
           name: 'AdminTaskDetail',
-          component: () => import('@/views/member/task/TaskDetail.vue')
+          component: () => import('@/views/member/task/TaskDetail.vue'),
         },
         {
           path: 'notifications',
@@ -125,9 +135,9 @@ const router = createRouter({
         {
           path: 'reports',
           name: 'ReportManagement',
-          component: () => import('@/views/admin/ReportManagement.vue')
-        }
-      ]
+          component: () => import('@/views/admin/ReportManagement.vue'),
+        },
+      ],
     },
 
     // Redirect nếu không khớp
