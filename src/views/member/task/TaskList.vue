@@ -83,7 +83,7 @@ const getProjectName = (projectId) => {
 
 const goDetail = (item) => {
     const realItem = item.raw || item
-    router.push(`/tasks/${realItem.id}`)
+    router.push(`/member/tasks/${realItem.id}`)
 }
 
 const headers = [
@@ -108,11 +108,11 @@ const getPriorityColor = (priority) => {
 }
 
 const handleUpdateStatus = async (item, newStatus) => {
-    if (item.status === newStatus) return
+    const realItem = item.raw || item // Xử lý reactivity của Vuetify data table
+    if (realItem.status === newStatus) return
     // Nếu chuyển sang CANCELLED hoặc DONE, có thể cần confirm hoặc nhập lý do (tạm thời để null)
     // Backend yêu cầu: updateStatus(id, status, cancelReason)
-    const realItem = item.raw || item // Xử lý reactivity của Vuetify data table
-    await taskStore.updateStatus(realItem.id, newStatus, null)
+    await taskStore.updateStatus(realItem.id, newStatus, '')
 }
 
 onMounted(() => {

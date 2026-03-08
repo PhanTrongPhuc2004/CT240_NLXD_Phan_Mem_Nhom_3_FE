@@ -229,7 +229,7 @@ const getPriorityColor = (priority) => {
 
 function goDetail(item) {
     const realItem = item.raw || item
-    router.push(`/tasks/${realItem.id}`)
+    router.push(`/admin/tasks/${realItem.id}`)
 }
 
 // Khi đổi dự án, reset người được giao việc nếu người đó không thuộc dự án mới
@@ -353,9 +353,12 @@ async function save() {
     }
 }
 
-onMounted(() => {
-    taskStore.fetchAll();
-    projectStore.fetchAllSystem();
-    userStore.fetchAll();
+onMounted(async () => {
+    // Sử dụng Promise.all và catch lỗi riêng lẻ để trang không bị crash nếu một API lỗi
+    await Promise.all([
+        taskStore.fetchAll().catch(err => console.error("Lỗi tải tasks:", err)),
+        projectStore.fetchAllSystem().catch(err => console.error("Lỗi tải projects:", err)),
+        userStore.fetchAll().catch(err => console.error("Lỗi tải users (Backend 500):", err))
+    ]);
 });
 </script>

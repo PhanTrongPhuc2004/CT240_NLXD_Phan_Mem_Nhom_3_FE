@@ -37,24 +37,31 @@
             <v-list-item-icon>
               <v-icon>mdi-folder-outline</v-icon>
             </v-list-item-icon>
-            <v-list-item-title>Dự án của tôi</v-list-item-title>
+            <v-list-item-title>Tất cả dự án </v-list-item-title>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'MemberTasks' }" class="menu-item px-4">
+          <v-list-item :to="{ name: 'MyProjects' }" @click="selectedItem = 2">
+            <v-list-item-icon>
+              <v-icon>mdi-account-group-outline</v-icon>
+            </v-list-item-icon>
+            <v-list-item-title>Dự án tham gia</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item :to="{ name: 'MemberTasks' }" @click="selectedItem = 3">
             <v-list-item-icon>
               <v-icon>mdi-clipboard-text-outline</v-icon>
             </v-list-item-icon>
             <v-list-item-title>Công việc của tôi</v-list-item-title>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'Notifications' }" class="menu-item px-4">
+          <v-list-item :to="{ name: 'Notifications' }" @click="selectedItem = 4">
             <v-list-item-icon>
               <v-icon>mdi-bell-outline</v-icon>
             </v-list-item-icon>
             <v-list-item-title>Thông báo của tôi</v-list-item-title>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'Profile' }" class="menu-item px-4">
+          <v-list-item :to="{ name: 'Profile' }" @click="selectedItem = 5">
             <v-list-item-icon>
               <v-icon>mdi-account-circle-outline</v-icon>
             </v-list-item-icon>

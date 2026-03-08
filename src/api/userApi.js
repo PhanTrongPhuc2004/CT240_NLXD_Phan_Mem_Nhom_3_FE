@@ -9,6 +9,9 @@ export const getProfile = () => api.get('/users/me')
 export const updateProfile = (data) => api.put('/users/me', data)
 
 export const getAllUsers = () => api.get('/users')
+
+export const searchUsers = (keyword) => api.get('/users/search', { params: { keyword } })
+
 export const createUser = (data) => api.post('/users', data)
 export const updateUser = (id, data) => api.put(`/users/${id}`, data)     
 export const deleteUser = (id) => api.delete(`/users/${id}`)
@@ -21,6 +24,8 @@ export const userApi = {
     getProfile,
     updateProfile,
     getAllUsers,
+    getAll: getAllUsers,
+    search: searchUsers,
     createUser,
     updateUser,
     deleteUser,

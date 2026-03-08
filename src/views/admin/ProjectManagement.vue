@@ -46,7 +46,7 @@
         <template v-slot:item.actions="{ item }">
           <v-icon small class="me-2" @click="viewProject(item)">mdi-eye</v-icon>
           <v-icon small class="me-2" @click="editProject(item)">mdi-pencil</v-icon>
-          <v-icon small color="error" @click="confirmDelete(item)">mdi-delete</v-icon>
+          <v-icon small color="error" @click="confirmDelete(item)" v-if="isAdmin">mdi-delete</v-icon>
         </template>
       </v-data-table>
     </v-card>
@@ -72,10 +72,13 @@
 import { ref, onMounted, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
-import api from '@/api/index'; // SỬA: Dùng api đã cấu hình sẵn thay vì axios trực tiếp
+import { useAuthStore } from '@/stores/auth';
+import { useUserStore } from '@/stores/user'; // SỬA: Dùng store thay vì gọi api trực tiếp
 
 const router = useRouter();
 const projectStore = useProjectStore();
+const authStore = useAuthStore();
+const userStore = useUserStore();
 
 // Định nghĩa các cột cho bảng
 const headers = [
@@ -86,39 +89,24 @@ const headers = [
   { title: 'Hành động', key: 'actions', sortable: false, align: 'end' },
 ];
 
+const isAdmin = authStore.userRole === 'ADMIN';
+
 // Dialog xác nhận xóa
 const dialogDelete = ref(false);
 const projectToDelete = ref(null);
 
-// Map lưu trữ thông tin user: { userId: fullName }
-const userMap = reactive({});
-
 // Gọi API để lấy dữ liệu khi component được mount
 onMounted(async () => {
-  await Promise.all([
-    projectStore.fetchAllSystem(),
-    fetchUsers()
-  ]);
+  // Gọi song song nhưng catch lỗi riêng để tránh crash toàn bộ nếu 1 API lỗi (đặc biệt là lỗi 500 từ users)
+  const p1 = projectStore.fetchAllSystem().catch(err => console.error("Lỗi tải dự án:", err));
+  const p2 = userStore.fetchAll().catch(err => console.error("Lỗi tải users (có thể do Backend):", err));
+  await Promise.all([p1, p2]);
 });
-
-// Hàm lấy danh sách user để map ID -> Tên
-const fetchUsers = async () => {
-  try {
-    // SỬA: Gọi đúng endpoint /users thay vì /users/all
-    const response = await api.get('/users');
-
-    // Tạo map: id -> fullName
-    response.data.forEach(user => {
-      userMap[user.id] = user.fullName || user.username;
-    });
-  } catch (error) {
-    console.error("Lỗi khi tải danh sách user:", error);
-  }
-};
 
 // Hàm helper để lấy tên từ ID
 const getUserName = (userId) => {
-  return userMap[userId] || userId; // Nếu chưa load xong hoặc không tìm thấy thì hiện ID tạm
+  const user = userStore.users.find(u => u.id === userId);
+  return user ? (user.fullName || user.username) : userId;
 };
 
 const getInitials = (name) => {
@@ -134,16 +122,16 @@ const getStatusColor = (status) => {
 };
 
 const goToCreateProject = () => {
-  router.push('/projects/create');
+  router.push('/admin/projects/create');
 };
 
 const viewProject = (item) => {
-  router.push({ path: `/admin/projects/${item.id}` });
+  router.push(`/admin/projects/${item.id}`);
 };
 
 const editProject = (item) => {
-  // Chuyển đến trang chi tiết và mở sẵn tab Cài đặt
-  router.push({ path: `/admin/projects/${item.id}`, query: { tab: 'settings' } });
+  // Chuyển đến trang chi tiết và mở tab settings
+  router.push(`/admin/projects/${item.id}?tab=settings`);
 };
 
 const confirmDelete = (item) => {

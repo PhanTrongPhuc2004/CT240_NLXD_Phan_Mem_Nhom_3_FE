@@ -32,9 +32,13 @@ const router = createRouter({
       component: () => import('@/views/profile/ProfileEdit.vue')
     },
 
-    // Member routes - dùng MemberLayout
     {
       path: '/',
+      redirect: '/member',
+    },
+    // Member routes - dùng MemberLayout
+    {
+      path: '/member',
       component: MemberLayout,
       meta: { requiresAuth: true },
       children: [
@@ -47,6 +51,16 @@ const router = createRouter({
           path: 'projects',
           name: 'MemberProjects',
           component: () => import('@/views/member/project/ProjectList.vue'),
+        },
+        {
+          path: 'my-projects',
+          name: 'MyProjects',
+          component: () => import('@/views/member/project/MyProjectList.vue'),
+        },
+        {
+          path: 'my-projects/:id',
+          name: 'MyProjectDetail',
+          component: () => import('@/views/member/project/ProjectDetail.vue'),
         },
         {
           path: 'projects/create',
@@ -108,6 +122,11 @@ const router = createRouter({
           component: () => import('@/views/admin/ProjectManagement.vue'),
         },
         {
+          path: 'projects/create',
+          name: 'AdminProjectCreate',
+          component: () => import('@/views/member/project/ProjectForm.vue'),
+        },
+        {
           // Thêm route này để Admin xem chi tiết dự án mà vẫn giữ AdminLayout
           path: 'projects/:id',
           name: 'AdminProjectDetail',
@@ -117,6 +136,11 @@ const router = createRouter({
           path: 'tasks',
           name: 'TaskManagement',
           component: () => import('@/views/admin/TaskManagement.vue'),
+        },
+        {
+          path: 'tasks/:id',
+          name: 'AdminTaskDetail',
+          component: () => import('@/views/member/task/TaskDetail.vue'),
         },
         {
           path: 'notifications',

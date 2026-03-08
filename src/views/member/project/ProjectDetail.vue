@@ -25,7 +25,7 @@
           <div>
             <!-- Nút Quay lại thông minh -->
             <v-btn variant="text" prepend-icon="mdi-arrow-left" class="mb-2 px-0" color="grey-darken-2" @click="goBack">
-              {{ isAdmin ? 'Quay lại trang Quản lý' : 'Quay lại Danh sách' }}
+              {{ backButtonLabel }}
             </v-btn>
 
             <div class="d-flex align-center mb-2">
@@ -83,7 +83,7 @@
             </v-avatar>
             <div>
               <div class="text-caption text-grey">Hoàn thành</div>
-              <div class="font-weight-bold">0/0 Task</div> <!-- TODO: Bind real data -->
+              <div class="font-weight-bold">{{ completedTasksCount }}/{{ projectTasks.length }} Task</div>
             </div>
           </div>
           <div class="d-flex align-center ml-6">
@@ -130,10 +130,10 @@
                 <v-card class="pa-4 h-100" elevation="1">
                   <v-card-title>Tiến độ dự án</v-card-title>
                   <v-card-text class="d-flex flex-column align-center justify-center" style="min-height: 300px;">
-                    <v-progress-circular :model-value="0" :size="150" :width="15" color="primary">
-                      <span class="text-h5 font-weight-bold">0%</span>
+                    <v-progress-circular :model-value="progressPercentage" :size="150" :width="15" color="primary">
+                      <span class="text-h5 font-weight-bold">{{ Math.round(progressPercentage) }}%</span>
                     </v-progress-circular>
-                    <p class="mt-4 text-grey">Chưa có dữ liệu task để tính toán tiến độ.</p>
+                    <p class="mt-4 text-grey">{{ projectTasks.length > 0 ? `Đã hoàn thành ${completedTasksCount}/${projectTasks.length} công việc` : 'Chưa có dữ liệu task để tính toán tiến độ.' }}</p>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -551,7 +551,9 @@ const editForm = reactive({
 
 // Computed Properties
 const currentUserId = computed(() => authStore.user?.id);
-const isOwner = computed(() => project.value?.ownerId === currentUserId.value);
+// SỬA: Chỉ Admin hệ thống mới có quyền như Owner (cài đặt, xóa dự án). Manager chỉ quản lý trong phạm vi được giao.
+const isOwner = computed(() => project.value?.ownerId === currentUserId.value || authStore.userRole === 'ADMIN');
+
 const isManager = computed(() => project.value?.managerIds?.includes(currentUserId.value));
 const isMember = computed(() => project.value?.memberIds?.includes(currentUserId.value));
 const isPending = computed(() => project.value?.pendingMemberIds?.includes(currentUserId.value));
@@ -597,6 +599,15 @@ const projectTasks = computed(() => {
   return taskStore.tasks.filter(t => t.projectId === project.value.id);
 });
 
+const completedTasksCount = computed(() => {
+  return projectTasks.value.filter(t => t.status === 'DONE').length;
+});
+
+const progressPercentage = computed(() => {
+  if (projectTasks.value.length === 0) return 0;
+  return (completedTasksCount.value / projectTasks.value.length) * 100;
+});
+
 // Lấy danh sách user object của các thành viên trong dự án (để hiển thị trong dropdown giao việc)
 const projectMembersList = computed(() => {
   if (!project.value || allUsers.value.length === 0) return [];
@@ -636,11 +647,19 @@ const getInitials = (name) => {
   return name.charAt(0).toUpperCase();
 };
 
+const backButtonLabel = computed(() => {
+  if (isAdmin.value) return 'Quay lại trang Quản lý';
+  if (route.name === 'MyProjectDetail') return 'Quay lại Dự án của tôi';
+  return 'Quay lại Danh sách';
+});
+
 const goBack = () => {
   if (isAdmin.value) {
     router.push('/admin/projects');
+  } else if (route.name === 'MyProjectDetail') {
+    router.push({ name: 'MyProjects' });
   } else {
-    router.push('/projects');
+    router.push({ name: 'MemberProjects' });
   }
 };
 
@@ -684,13 +703,42 @@ const loadProjectData = async () => {
 };
 
 const fetchAllUsers = async () => {
-  try {
-    const res = await api.get('/users');
-    allUsers.value = res.data;
-  } catch (e) {
-    console.error("Lỗi load users:", e);
+  // Chỉ Admin mới thử lấy toàn bộ danh sách users để tránh lỗi 500/403 với Member
+  if (authStore.userRole === 'ADMIN') {
+    try {
+      const res = await api.get('/users');
+      allUsers.value = res.data;
+      return;
+    } catch (e) {
+      console.warn("Admin không tải được danh sách users, chuyển sang chế độ tải từng người.");
+    }
   }
-}
+
+  // Logic tải từng người (Dành cho Member hoặc khi Admin lỗi)
+  if (!project.value) return;
+
+    const memberIds = [
+      project.value.ownerId,
+      ...(project.value.managerIds || []),
+      ...(project.value.memberIds || [])
+    ].filter(Boolean);
+    
+    const uniqueIds = [...new Set(memberIds)];
+    const loadedUsers = [];
+
+    // Sử dụng Promise.all để tải song song
+    await Promise.all(uniqueIds.map(async (uid) => {
+      try {
+        const uRes = await api.get(`/users/${uid}`);
+        loadedUsers.push(uRes.data);
+      } catch (err) {
+        console.error(`Lỗi tải thông tin user ${uid}:`, err);
+      }
+    }));
+    
+    allUsers.value = loadedUsers;
+  }
+
 
 const updateProjectInfo = async () => {
   updating.value = true;
@@ -720,7 +768,7 @@ const deleteProject = async () => {
     if (isAdmin.value) {
       router.replace('/admin/projects'); // Dùng replace để không back lại được trang đã xóa
     } else {
-      router.replace('/projects');
+      router.replace({ name: 'MemberProjects' });
     }
   } catch (err) {
     alert(`Lỗi xóa dự án (ID: ${project.value.id}): ` + (err.response?.data?.message || err.message || "Backend từ chối quyền xóa (403)."));
@@ -731,7 +779,7 @@ const handleLeaveProject = async () => {
   if (!confirm("Bạn có chắc muốn rời khỏi dự án này?")) return;
   try {
     await projectStore.leaveProject(project.value.id);
-    router.push('/projects');
+    router.push({ name: 'MemberProjects' });
   } catch (err) {
     alert("Lỗi: " + err.message);
   }
@@ -789,20 +837,22 @@ const onSearchUser = async (keyword) => {
   searchTimeout = setTimeout(async () => {
     searching.value = true;
     try {
-      // WORKAROUND: Dùng API lấy tất cả user và lọc client-side vì API search đang lỗi 500
-      // const res = await api.get('/users/search', { params: { keyword } });
-      const res = await api.get('/users');
-      const k = keyword.toLowerCase();
-      searchResults.value = res.data.filter(u => 
-        (u.fullName && u.fullName.toLowerCase().includes(k)) || 
-        (u.email && u.email.toLowerCase().includes(k))
-      );
+      console.log(`[DEBUG] Đang gọi API tìm kiếm user với từ khóa: "${keyword}"`);
+      const res = await api.get('/users/search', { params: { keyword } });
+      console.log("[DEBUG] Kết quả tìm kiếm thành công:", res.data);
+      searchResults.value = res.data;
     } catch (err) {
-      console.error("Lỗi tìm kiếm:", err);
+      console.error("[DEBUG] Lỗi tìm kiếm:", err);
+      if (err.response) {
+        console.error("[DEBUG] Chi tiết phản hồi lỗi từ Server:", err.response.status, err.response.data);
+      }
+      // Nếu lỗi 500 (Server Error), có thể do backend chưa hỗ trợ search hoặc lỗi quyền hạn
+      // Ta clear kết quả để UI không bị treo loading
+      searchResults.value = [];
     } finally {
       searching.value = false;
     }
-  }, 500);
+  }, 500);  
 };
 
 const addMemberSubmit = async () => {
@@ -890,21 +940,34 @@ const saveTask = async () => {
     return;
   }
 
+  // Clone payload để xử lý dữ liệu trước khi gửi
+  const payload = { ...editedTask.value };
+
+  // Xử lý ID rỗng khi tạo mới (Backend thường không chấp nhận id: "")
+  if (!payload.id) delete payload.id;
+
+  // Xử lý các trường optional để tránh gửi chuỗi rỗng hoặc undefined
+  payload.description = payload.description || null;
+  payload.assigneeId = payload.assigneeId || null;
+
   // Format deadline
-  if (editedTask.value.deadline && editedTask.value.deadline.length === 16) {
-      editedTask.value.deadline += ':00';
+  if (payload.deadline && payload.deadline.length === 16) {
+      payload.deadline += ':00';
+  } else if (!payload.deadline) {
+      payload.deadline = null;
   }
 
   try {
     if (editedTask.value.id) {
-      await taskStore.update(editedTask.value.id, editedTask.value);
+      await taskStore.update(editedTask.value.id, payload);
     } else {
-      await taskStore.create(editedTask.value);
+      await taskStore.create(payload);
     }
     closeTaskDialog();
     // taskStore.fetchAll() được gọi tự động hoặc reactive update
   } catch (err) {
-    alert("Lỗi lưu công việc: " + (err.response?.data?.message || err.message));
+    console.error("Lỗi saveTask:", err);
+    alert("Lỗi lưu công việc: " + (err.response?.data?.message || err.response?.data || err.message));
   }
 };
 
@@ -915,7 +978,7 @@ const updateTaskStatus = async (task, newStatus) => {
 
   try {
     // Sử dụng updateStatus chuyên biệt để tránh lỗi 403 (Member có thể update status nhưng không update được toàn bộ task)
-    await taskStore.updateStatus(task.id, newStatus, null);
+    await taskStore.updateStatus(task.id, newStatus, '');
   } catch (err) {
     task.status = oldStatus; // Hoàn tác nếu lỗi
     alert("Lỗi cập nhật trạng thái: " + (err.response?.data?.message || err.message));
@@ -936,7 +999,7 @@ const deleteTaskItem = async (item) => {
 };
 
 onMounted(() => {
-  // Tự động chuyển tab nếu có query param từ trang Admin
+  // Nếu có query param tab (ví dụ: ?tab=settings), mở tab đó
   if (route.query.tab) {
     activeTab.value = route.query.tab;
   }

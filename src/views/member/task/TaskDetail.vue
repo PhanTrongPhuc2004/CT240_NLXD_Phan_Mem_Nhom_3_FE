@@ -68,11 +68,13 @@ import { useRoute } from 'vue-router'
 import { useTaskStore } from '@/stores/task'
 import { useProjectStore } from '@/stores/project'
 import { useUserStore } from '@/stores/user'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const taskStore = useTaskStore()
 const projectStore = useProjectStore()
 const userStore = useUserStore()
+const authStore = useAuthStore()
 
 const task = computed(() => taskStore.currentTask)
 const loading = computed(() => taskStore.loading)
@@ -87,6 +89,10 @@ const projectName = computed(() => {
 // Helper lấy tên người thực hiện
 const assigneeName = computed(() => {
     if (!task.value?.assigneeId) return 'Chưa giao'
+    // Nếu là chính mình (Member xem task của mình)
+    if (task.value.assigneeId === authStore.user?.id) {
+        return authStore.user?.fullName || authStore.user?.username
+    }
     const user = userStore.users.find(u => u.id === task.value.assigneeId)
     return user ? user.fullName : task.value.assigneeId
 })
@@ -107,11 +113,18 @@ const getPriorityColor = (priority) => {
 onMounted(async () => {
     const taskId = route.params.id
     if (taskId) {
-        await Promise.all([
+        const promises = [
             taskStore.getDetail(taskId),
-            projectStore.fetchAll(), // Load để map tên dự án
-            userStore.fetchAll()     // Load để map tên user
-        ])
+            projectStore.fetchAll() // Load để map tên dự án
+        ]
+
+        // Chỉ Admin/Manager mới được phép lấy danh sách tất cả user
+        // Member thường bị chặn (403) hoặc 401 gây logout
+        if (['ADMIN', 'MANAGER'].includes(authStore.userRole)) {
+             promises.push(userStore.fetchAll())
+        }
+        
+        await Promise.all(promises)
     }
 })
 </script>
