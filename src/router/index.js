@@ -21,6 +21,16 @@ const router = createRouter({
       component: () => import('@/views/auth/Register.vue'),
       meta: { requiresAuth: false },
     },
+    {
+      path: '/profile',
+      name: 'Profile',
+      component: () => import('@/views/profile/ProfileView.vue')
+    },
+    {
+      path: '/profile/edit',
+      name: 'ProfileEdit',
+      component: () => import('@/views/profile/ProfileEdit.vue')
+    },
 
     // Member routes - dùng MemberLayout
     {
@@ -66,8 +76,13 @@ const router = createRouter({
         {
           path: 'profile',
           name: 'Profile',
-          component: () => import('@/views/shared/Profile.vue'),
+          component: () => import('@/views/profile/ProfileView.vue'),
         },
+        // {
+        //   path: '/profile/edit',
+        //   name: 'ProfileEdit',
+        //   component: () => import('@/views/profile/ProfileEdit.vue')
+        // }
       ],
     },
 
