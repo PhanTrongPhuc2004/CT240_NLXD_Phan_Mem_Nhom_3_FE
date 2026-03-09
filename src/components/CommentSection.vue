@@ -1,74 +1,7 @@
-<template>
-  <v-card class="mt-4" variant="outlined">
-    <v-card-title class="text-subtitle-1 font-weight-bold d-flex align-center">
-      <v-icon start size="small" color="grey">mdi-comment-text-multiple</v-icon>
-      Thảo luận
-    </v-card-title>
-    <v-divider></v-divider>
-    <v-card-text>
-      <!-- Danh sách bình luận -->
-      <div v-if="comments.length === 0" class="text-center text-grey py-4">
-        Chưa có bình luận nào. Hãy là người đầu tiên bình luận!
-      </div>
-      <v-list v-else class="pa-0" density="compact">
-        <v-list-item v-for="comment in comments" :key="comment.id" class="px-0 mb-2">
-          <template v-slot:prepend>
-            <v-avatar color="grey-lighten-3" size="32">
-              <span class="text-caption font-weight-bold text-grey-darken-3">
-                {{ getInitials(comment.userName) }}
-              </span>
-            </v-avatar>
-          </template>
-          <v-list-item-title class="text-body-2 font-weight-bold">
-            {{ comment.userName }}
-            <span class="text-caption text-grey ml-2">{{ formatDate(comment.createdAt) }}</span>
-          </v-list-item-title>
-          <v-list-item-subtitle class="text-body-1 text-high-emphasis mt-1" style="white-space: pre-wrap;">
-            {{ comment.content }}
-          </v-list-item-subtitle>
-        </v-list-item>
-      </v-list>
-
-      <!-- Form bình luận -->
-      <div class="d-flex align-start mt-4 gap-2">
-        <v-avatar color="primary" size="32" class="mt-1">
-          <span class="text-white text-caption">ME</span>
-        </v-avatar>
-        <v-textarea
-          v-model="newComment"
-          placeholder="Viết bình luận..."
-          variant="outlined"
-          rows="1"
-          auto-grow
-          hide-details
-          density="comfortable"
-          bg-color="grey-lighten-5"
-        >
-          <template v-slot:append-inner>
-            <v-btn
-              icon="mdi-send"
-              variant="text"
-              size="small"
-              color="primary"
-              :disabled="!newComment.trim()"
-              @click="submitComment"
-            ></v-btn>
-          </template>
-        </v-textarea>
-      </div>
-    </v-card-text>
-  </v-card>
-</template>
-
 <script setup>
-<<<<<<< HEAD
 import { ref, onMounted, computed } from 'vue';
 import { commentApi } from '@/api/commentApi'; 
-import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
-=======
-import { ref, onMounted } from 'vue';
->>>>>>> ee4759112ee82580f65aaaad19f9de5117f13075
+import { useAuthStore } from '@/stores/auth';
 
 // ==========================================
 // THÔNG TIN CHUNG & LOCAL STORAGE
@@ -77,15 +10,37 @@ const props = defineProps({
   taskId: { type: String, required: true }
 });
 
-<<<<<<< HEAD
+const authStore = useAuthStore();
 // Tạo biến lưu thông tin user đang đăng nhập
 const currentUserId = ref('');
 const currentUserName = ref('');
 
+// Helper format thời gian (thay thế date-fns để tránh lỗi thiếu package)
+const formatTimeAgo = (dateInput) => {
+  if (!dateInput) return '';
+  const date = new Date(dateInput);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+
+  if (diffInSeconds < 60) return 'vừa xong';
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} phút trước`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} giờ trước`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} ngày trước`;
+  return date.toLocaleDateString('vi-VN');
+};
+
 onMounted(() => {
   // Tự động lấy ID và Tên từ Local Storage theo đúng như ảnh bạn gửi
-  currentUserId.value = localStorage.getItem('userId') || '';
-  currentUserName.value = localStorage.getItem('username') || '';
+  if (authStore.user) {
+    currentUserId.value = authStore.user.id;
+    currentUserName.value = authStore.user.fullName || authStore.user.username;
+  } else {
+    currentUserId.value = localStorage.getItem('userId') || '';
+    currentUserName.value = localStorage.getItem('username') || '';
+  }
   
   fetchComments(); 
 });
@@ -130,10 +85,18 @@ const removeFile = (id) => {
 
 const handleSendComment = async () => {
   if (!newCommentContent.value.trim() && attachedFiles.value.length === 0) return;
+
+  if (!currentUserId.value) {
+    alert("Lỗi: Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.");
+    return;
+  }
+
   try {
     isLoading.value = true;
     const filesToUpload = attachedFiles.value.map(f => f.raw);
     
+    console.log("Đang gửi bình luận:", { taskId: props.taskId, content: newCommentContent.value, userId: currentUserId.value, files: filesToUpload });
+
     // Gọi API kèm ID thật của user từ Local Storage
     await commentApi.addComment(props.taskId, newCommentContent.value, filesToUpload, currentUserId.value);
     
@@ -142,7 +105,8 @@ const handleSendComment = async () => {
     
     await fetchComments();
   } catch (error) {
-    alert(error.response?.data?.error || "Có lỗi xảy ra khi gửi bình luận");
+    console.error("Lỗi API:", error);
+    alert(error.response?.data?.message || error.response?.data || "Lỗi Server (500): Vui lòng kiểm tra lại dữ liệu gửi đi.");
     console.error(error);
   } finally {
     isLoading.value = false;
@@ -392,7 +356,7 @@ const deleteComment = async (commentId) => {
 
               <span class="text-caption text-grey-darken-1">
                 • <v-icon size="12" class="mr-1 mb-1">mdi-clock-outline</v-icon>
-                {{ comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: vi }) : '' }}
+                {{ formatTimeAgo(comment.createdAt) }}
               </span>
             </div>
 
@@ -478,23 +442,6 @@ const deleteComment = async (commentId) => {
   </v-card>
 </template>
 
-
-=======
-const comments = ref([]);
-const newComment = ref('');
-
-const getInitials = (name) => name ? name.charAt(0).toUpperCase() : '?';
-const formatDate = (date) => new Date(date).toLocaleString('vi-VN');
-
-const submitComment = () => {
-  if (!newComment.value.trim()) return;
-  // Mock comment
-  comments.value.push({ id: Date.now(), userName: 'Bạn', content: newComment.value, createdAt: new Date().toISOString() });
-  newComment.value = '';
-};
-</script>
-
->>>>>>> ee4759112ee82580f65aaaad19f9de5117f13075
 <style scoped>
 .cursor-pointer { cursor: pointer; }
 .hover-black:hover { color: #212121 !important; }
