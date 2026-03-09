@@ -175,12 +175,12 @@
                 
                 <template v-slot:item.title="{ item }">
                   <span class="font-weight-medium text-primary cursor-pointer" @click="openTaskDialog(item)">
-                    {{ item.raw.title }}
+                    {{ item.title }}
                   </span>
                 </template>
 
                 <template v-slot:item.assigneeId="{ item }">
-                  <UserAvatarName v-if="item.raw.assigneeId" :user-id="item.raw.assigneeId" />
+                  <UserAvatarName v-if="item.assigneeId" :user-id="item.assigneeId" />
                   <span v-else class="text-grey text-caption font-italic">Chưa giao</span>
                 </template>
 
@@ -189,14 +189,14 @@
                     <template v-slot:activator="{ props }">
                       <v-chip
                         v-bind="props"
-                        :color="getTaskStatusColor(item.raw.status)"
+                        :color="getTaskStatusColor(item.status)"
                         size="small"
                         label
                         class="cursor-pointer font-weight-bold"
                         append-icon="mdi-chevron-down"
                         style="min-width: 140px; justify-content: space-between;"
                       >
-                        {{ item.raw.status }}
+                        {{ item.status }}
                       </v-chip>
                     </template>
                     <v-list density="compact" elevation="2">
@@ -215,22 +215,22 @@
                   </v-menu>
                   <v-chip
                     v-else
-                    :color="getTaskStatusColor(item.raw.status)"
+                    :color="getTaskStatusColor(item.status)"
                     size="small"
                     label
                     class="font-weight-bold"
                     style="min-width: 140px; justify-content: center;"
                   >
-                    {{ item.raw.status }}
+                    {{ item.status }}
                   </v-chip>
                 </template>
 
                 <template v-slot:item.priority="{ item }">
-                  <v-chip :color="getTaskPriorityColor(item.raw.priority)" size="small" variant="outlined">{{ item.raw.priority }}</v-chip>
+                  <v-chip :color="getTaskPriorityColor(item.priority)" size="small" variant="outlined">{{ item.priority }}</v-chip>
                 </template>
 
                 <template v-slot:item.deadline="{ item }">
-                  {{ item.raw.deadline ? new Date(item.raw.deadline).toLocaleDateString('vi-VN') : '' }}
+                  {{ item.deadline ? new Date(item.deadline).toLocaleDateString('vi-VN') : '' }}
                 </template>
 
                 <template v-slot:item.actions="{ item }">
@@ -833,22 +833,27 @@ const onSearchUser = async (keyword) => {
     return;
   }
 
+  // WORKAROUND: Nếu là Admin và đã tải allUsers, thực hiện tìm kiếm client-side
+  // Điều này giúp tránh gọi API đang bị lỗi Backend Routing (/users/search bị nhầm là /users/{id})
+  if (authStore.userRole === 'ADMIN' && allUsers.value.length > 0) {
+    const k = keyword.toLowerCase();
+    searchResults.value = allUsers.value.filter(u => 
+      (u.fullName?.toLowerCase().includes(k)) ||
+      (u.email?.toLowerCase().includes(k)) ||
+      (u.username?.toLowerCase().includes(k))
+    );
+    return;
+  }
+
   if (searchTimeout) clearTimeout(searchTimeout);
 
   searchTimeout = setTimeout(async () => {
     searching.value = true;
     try {
-      console.log(`[DEBUG] Đang gọi API tìm kiếm user với từ khóa: "${keyword}"`);
       const res = await api.get('/users/search', { params: { keyword } });
-      console.log("[DEBUG] Kết quả tìm kiếm thành công:", res.data);
       searchResults.value = res.data;
     } catch (err) {
-      console.error("[DEBUG] Lỗi tìm kiếm:", err);
-      if (err.response) {
-        console.error("[DEBUG] Chi tiết phản hồi lỗi từ Server:", err.response.status, err.response.data);
-      }
-      // Nếu lỗi 500 (Server Error), có thể do backend chưa hỗ trợ search hoặc lỗi quyền hạn
-      // Ta clear kết quả để UI không bị treo loading
+      console.error("Lỗi tìm kiếm:", err);
       searchResults.value = [];
     } finally {
       searching.value = false;
@@ -948,8 +953,14 @@ const saveTask = async () => {
   // Xử lý ID rỗng khi tạo mới (Backend thường không chấp nhận id: "")
   if (!payload.id) delete payload.id;
 
+  // Kiểm tra projectId bắt buộc
+  if (!payload.projectId) {
+    alert("Lỗi: Không xác định được dự án (Missing projectId)");
+    return;
+  }
+
   // Xử lý các trường optional để tránh gửi chuỗi rỗng hoặc undefined
-  payload.description = payload.description || null;
+  payload.description = payload.description || ''; // Gửi chuỗi rỗng nếu không có mô tả
   payload.assigneeId = payload.assigneeId || null;
 
   // Format deadline
