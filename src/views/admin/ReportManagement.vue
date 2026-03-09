@@ -19,7 +19,7 @@
 
         <v-col cols="3" class="d-flex justify-center align-center ga-2">
           <v-btn color="primary">Áp dụng</v-btn>
-          <v-btn color="success">Xuất CSV</v-btn>
+          <v-btn color="green" @click="exportDialog = true"> Xuất báo cáo </v-btn>
         </v-col>
       </v-row>
     </v-card>
@@ -148,6 +148,219 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Xuất báo cáo -->
+    <v-dialog v-model="exportDialog" max-width="1200">
+      <v-card>
+        <v-card-title class="text-h6"> Xuất báo cáo </v-card-title>
+
+        <v-card-text>
+          <v-row>
+            <!-- BÊN TRÁI -->
+            <v-col cols="6">
+              <h2 class="mb-1">Xuất báo cáo</h2>
+              <p class="text-grey text-caption mb-4">
+                Tùy chỉnh các lựa chọn để xuất báo cáo tối ưu cho màn hình máy tính (desktop).
+              </p>
+
+              <v-select label="Dự án" :items="projects" variant="outlined" class="mb-1" />
+
+              <v-row>
+                <v-col cols="6">
+                  <v-text-field
+                    v-model="fromDate"
+                    label="Từ ngày"
+                    type="date"
+                    prepend-inner-icon="mdi-calendar"
+                    variant="outlined"
+                  ></v-text-field>
+                </v-col>
+
+                <v-col cols="6">
+                  <v-text-field
+                    v-model="toDate"
+                    label="Đến ngày"
+                    type="date"
+                    prepend-inner-icon="mdi-calendar"
+                    variant="outlined"
+                  ></v-text-field>
+                </v-col>
+              </v-row>
+
+              <v-row no-gutters class="mb-8">
+                <v-col cols="12" class="d-flex justify-center">
+                  <v-btn block color="primary"> Áp dụng </v-btn>
+                </v-col>
+              </v-row>
+
+              <v-divider class="my-6"></v-divider>
+
+              <h2 class="mb-1">Tùy chọn báo cáo</h2>
+
+              <v-checkbox
+                density="compact"
+                hide-details
+                label="Bao gồm các filter hiện tại (trạng thái, người được gán, priority)"
+              />
+
+              <p class="mt-3 mb-2 font-weight-medium">Định dạng xuất</p>
+
+              <v-row>
+                <v-col cols="4">
+                  <v-btn block variant="outlined" class="btn-export">
+                    <div class="btn-content">
+                      CSV
+                      <span class="sub-text text-none">Dữ liệu thô</span>
+                    </div>
+                  </v-btn>
+                </v-col>
+
+                <v-col cols="4">
+                  <v-btn block variant="outlined" class="btn-export">
+                    <div class="btn-content">
+                      PDF
+                      <span class="sub-text text-none">Tài liệu cố định</span>
+                    </div>
+                  </v-btn>
+                </v-col>
+
+                <v-col cols="4">
+                  <v-btn block variant="outlined" class="btn-export">
+                    <div class="btn-content">
+                      Excel (XLSX)
+                      <span class="sub-text text-none">Bảng tính</span>
+                    </div>
+                  </v-btn>
+                </v-col>
+              </v-row>
+
+              <v-row class="ma-0">
+                <v-col cols="6">
+                  <p class="mt-2 font-weight-medium">Nội dung bổ sung</p>
+
+                  <v-checkbox density="compact" hide-details label="Bao gồm biểu đồ" />
+                  <v-checkbox density="compact" hide-details label="Bao gồm bảng chi tiết" />
+                  <v-checkbox density="compact" hide-details label="Bao gồm lịch sử thay đổi" />
+                  <v-checkbox density="compact" hide-details label="Bao gồm file đính kèm" />
+                </v-col>
+                <v-col cols="6">
+                  <p class="mt-2 font-weight-medium">Tùy chọn PDF nâng cao</p>
+                  <v-row>
+                    <v-col cols="6">
+                      <p class="mt-2 font-weight-medium">Hướng</p>
+
+                      <v-radio-group v-model="orientation" density="compact">
+                        <v-radio label="Dọc" value="portrait"></v-radio>
+                        <v-radio label="Ngang" value="landscape"></v-radio>
+                      </v-radio-group>
+                    </v-col>
+                    <v-col cols="6">
+                      <p class="mt-2 font-weight-medium">Kích thước</p>
+
+                      <v-radio-group v-model="paperSize" density="compact">
+                        <v-radio label="A4" value="a4"></v-radio>
+                        <v-radio label="Letter" value="letter"></v-radio>
+                      </v-radio-group>
+                    </v-col>
+                  </v-row>
+                </v-col>
+
+                <v-row>
+                  <v-col cols="12" class="py-1">
+                    <p class="text-subtitle-1 font-weight-medium mb-0">Lên lịch xuất</p>
+                  </v-col>
+                  <!-- Tần suất -->
+                  <v-col cols="6" class="py-1">
+                    <v-select
+                      label="Tần suất"
+                      :items="['Hàng ngày', 'Hàng tuần', 'Hàng tháng']"
+                      variant="outlined"
+                      density="compact"
+                    />
+                  </v-col>
+
+                  <!-- Thời gian -->
+                  <v-col cols="6" class="py-1">
+                    <v-text-field
+                      label="Thời gian"
+                      type="time"
+                      variant="outlined"
+                      density="compact"
+                    />
+                  </v-col>
+
+                  <!-- Email -->
+                  <v-col cols="12" class="py-1">
+                    <v-text-field
+                      label="Gửi tới email"
+                      placeholder="nguyenvana@example.com"
+                      prepend-inner-icon="mdi-email-outline"
+                      variant="outlined"
+                      density="compact"
+                    />
+                  </v-col>
+                </v-row>
+                <!-- Buttons -->
+                <v-row class="mt-0">
+                  <v-col cols="6">
+                    <v-btn block color="primary"> Lưu lịch </v-btn>
+                  </v-col>
+
+                  <v-col cols="6">
+                    <v-btn block variant="outlined"> Hủy lịch </v-btn>
+                  </v-col>
+                </v-row>
+              </v-row>
+            </v-col>
+
+            <!-- BÊN PHẢI -->
+            <v-col cols="6">
+              <h2>Lịch sử xuất</h2>
+
+              <v-table>
+                <thead>
+                  <tr>
+                    <th>Ngày</th>
+                    <th>Người yêu cầu</th>
+                    <th>Định dạng</th>
+                    <th>Trạng thái</th>
+                    <th></th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr v-for="item in exportHistory" :key="item.date">
+                    <td>{{ item.date }}</td>
+
+                    <td>{{ item.user }}</td>
+
+                    <td>{{ item.format }}</td>
+
+                    <td>{{ item.status }}</td>
+
+                    <td>
+                      <v-btn icon="mdi-download" size="small" variant="text" />
+
+                      <v-btn icon="mdi-delete" size="small" variant="text" />
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </v-col>
+          </v-row>
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+
+          <v-btn variant="text" @click="exportDialog = false"> Hủy </v-btn>
+
+          <v-btn color="primary" @click="exportReport"> Xuất báo cáo </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -211,6 +424,31 @@ export default {
       ],
       done: 45,
       total: 60,
+
+      exportDialog: false,
+
+      exportHistory: [
+        {
+          date: '2024-01-10',
+          user: 'Nguyễn Văn A',
+          format: 'PDF',
+          status: 'Hoàn thành',
+        },
+        {
+          date: '2024-01-08',
+          user: 'Trần Thị B',
+          format: 'Excel',
+          status: 'Thất bại',
+        },
+        {
+          date: '2024-01-05',
+          user: 'Lê Cảnh C',
+          format: 'CSV',
+          status: 'Hoàn thành',
+        },
+      ],
+      orientation: 'portrait',
+      paperSize: 'a4',
     }
   },
 
@@ -284,6 +522,12 @@ export default {
         },
       })
     },
+    //Xuất báo cáo
+    exportReport() {
+      console.log('Xuất báo cáo')
+
+      this.exportDialog = false
+    },
   },
 }
 </script>
@@ -295,9 +539,9 @@ h3 {
 }
 
 /*Tiến độ công việc */
-.pg-percent{
+.pg-percent {
   font-size: 14px;
-  padding:5px 10px;
+  padding: 5px 10px;
   background: #e6e6e6;
   color: #111111;
   border-radius: 999px;
@@ -353,5 +597,17 @@ h3 {
 .btn-view:hover {
   background-color: #000000;
   color: white;
+}
+
+.btn-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.sub-text {
+  font-size: 12px;
+  color: #777;
 }
 </style>
