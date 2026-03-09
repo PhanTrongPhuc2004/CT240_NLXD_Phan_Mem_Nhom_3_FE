@@ -1,15 +1,13 @@
-// src/api/index.js - ĐÃ THÊM INTERCEPTOR GẮN TOKEN TỰ ĐỘNG
+// src/api/index.js (thêm hoặc sửa interceptor)
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import router from '@/router'
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
+  headers: { 'Content-Type': 'application/json' }
 })
 
-// TỰ ĐỘNG GẮN TOKEN VÀO HEADER MỌI REQUEST
 api.interceptors.request.use(config => {
   const authStore = useAuthStore()
   if (authStore.token) {
@@ -18,14 +16,16 @@ api.interceptors.request.use(config => {
   return config
 })
 
-// XỬ LÝ LỖI 401/403 → logout nếu token hết hạn
 api.interceptors.response.use(
   response => response,
   error => {
+    const authStore = useAuthStore()
     if (error.response?.status === 401) {
-      const authStore = useAuthStore()
-      authStore.logout()
-      alert('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.')
+      // Chỉ logout nếu KHÔNG phải endpoint profile (GET/PUT /users/me)
+      if (!error.config.url.includes('/users/me')) {
+        authStore.logout()
+        router.push('/login?session_expired=true')
+      }
     }
     return Promise.reject(error)
   }

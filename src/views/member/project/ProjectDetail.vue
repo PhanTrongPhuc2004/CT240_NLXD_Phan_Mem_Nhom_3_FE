@@ -175,12 +175,12 @@
                 
                 <template v-slot:item.title="{ item }">
                   <span class="font-weight-medium text-primary cursor-pointer" @click="openTaskDialog(item)">
-                    {{ item.title }}
+                    {{ item.raw.title }}
                   </span>
                 </template>
 
                 <template v-slot:item.assigneeId="{ item }">
-                  <UserAvatarName v-if="item.assigneeId" :user-id="item.assigneeId" />
+                  <UserAvatarName v-if="item.raw.assigneeId" :user-id="item.raw.assigneeId" />
                   <span v-else class="text-grey text-caption font-italic">Chưa giao</span>
                 </template>
 
@@ -189,14 +189,14 @@
                     <template v-slot:activator="{ props }">
                       <v-chip
                         v-bind="props"
-                        :color="getTaskStatusColor(item.status)"
+                        :color="getTaskStatusColor(item.raw.status)"
                         size="small"
                         label
                         class="cursor-pointer font-weight-bold"
                         append-icon="mdi-chevron-down"
                         style="min-width: 140px; justify-content: space-between;"
                       >
-                        {{ item.status }}
+                        {{ item.raw.status }}
                       </v-chip>
                     </template>
                     <v-list density="compact" elevation="2">
@@ -215,22 +215,22 @@
                   </v-menu>
                   <v-chip
                     v-else
-                    :color="getTaskStatusColor(item.status)"
+                    :color="getTaskStatusColor(item.raw.status)"
                     size="small"
                     label
                     class="font-weight-bold"
                     style="min-width: 140px; justify-content: center;"
                   >
-                    {{ item.status }}
+                    {{ item.raw.status }}
                   </v-chip>
                 </template>
 
                 <template v-slot:item.priority="{ item }">
-                  <v-chip :color="getTaskPriorityColor(item.priority)" size="small" variant="outlined">{{ item.priority }}</v-chip>
+                  <v-chip :color="getTaskPriorityColor(item.raw.priority)" size="small" variant="outlined">{{ item.raw.priority }}</v-chip>
                 </template>
 
                 <template v-slot:item.deadline="{ item }">
-                  {{ item.deadline ? new Date(item.deadline).toLocaleDateString('vi-VN') : '' }}
+                  {{ item.raw.deadline ? new Date(item.raw.deadline).toLocaleDateString('vi-VN') : '' }}
                 </template>
 
                 <template v-slot:item.actions="{ item }">
@@ -561,10 +561,11 @@ const isAdmin = computed(() => authStore.userRole === 'ADMIN');
 const canManageTasks = computed(() => isAdmin.value || isOwner.value || isManager.value);
 
 const canUpdateStatus = (task) => {
+  const realTask = task.raw || task;
   // Admin, Owner, Manager có quyền sửa tất cả
   if (canManageTasks.value) return true;
   // Member chỉ được sửa task được giao cho mình
-  return task.assigneeId === currentUserId.value;
+  return realTask.assigneeId === currentUserId.value;
 };
 
 const dialogTitle = computed(() => {
@@ -919,7 +920,8 @@ const openTaskDialog = (item = null) => {
 
   if (item) {
     // Edit mode
-    editedTask.value = { ...item }; // Clone object
+    const realItem = item.raw || item;
+    editedTask.value = { ...realItem }; // Clone object
   } else {
     // Create mode
     editedTask.value = { ...defaultTask, projectId: project.value.id };
@@ -972,13 +974,14 @@ const saveTask = async () => {
 };
 
 const updateTaskStatus = async (task, newStatus) => {
-  if (task.status === newStatus) return;
-  const oldStatus = task.status;
-  task.status = newStatus; // Cập nhật UI ngay lập tức để phản hồi nhanh
+  const realTask = task.raw || task;
+  if (realTask.status === newStatus) return;
+  const oldStatus = realTask.status;
+  realTask.status = newStatus; // Cập nhật UI ngay lập tức để phản hồi nhanh
 
   try {
     // Sử dụng updateStatus chuyên biệt để tránh lỗi 403 (Member có thể update status nhưng không update được toàn bộ task)
-    await taskStore.updateStatus(task.id, newStatus, '');
+    await taskStore.updateStatus(realTask.id, newStatus, '');
   } catch (err) {
     task.status = oldStatus; // Hoàn tác nếu lỗi
     alert("Lỗi cập nhật trạng thái: " + (err.response?.data?.message || err.message));
@@ -986,13 +989,14 @@ const updateTaskStatus = async (task, newStatus) => {
 };
 
 const deleteTaskItem = async (item) => {
+  const realItem = item.raw || item;
   if (!canManageTasks.value) {
     alert("Bạn không có quyền xóa công việc này.");
     return;
   }
   if (!confirm("Bạn có chắc muốn xóa công việc này?")) return;
   try {
-    await taskStore.delete(item.id);
+    await taskStore.delete(realItem.id);
   } catch (err) {
     alert("Lỗi xóa: " + err.message);
   }

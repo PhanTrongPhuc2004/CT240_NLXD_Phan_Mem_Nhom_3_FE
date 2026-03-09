@@ -52,24 +52,6 @@
                       <v-radio label="Riêng tư" value="private"></v-radio>
                     </v-radio-group>
                   </v-col>
-
-                  <!-- Ảnh đại diện -->
-                  <v-col cols="12">
-                    <v-card variant="flat" class="pa-4 border">
-                      <v-card-title class="px-0 pt-0 font-weight-bold">Ảnh đại diện/Logo</v-card-title>
-                      <div
-                        class="upload-box mt-4 d-flex flex-column align-center justify-center border-dashed rounded-lg pa-6 grey-lighten-4"
-                        @click="$refs.fileInput.click()">
-                        <v-icon v-if="!form.avatarPreview" icon="mdi-image-outline" size="48"
-                          color="grey-lighten-1"></v-icon>
-                        <v-img v-else :src="form.avatarPreview" max-height="200" contain></v-img>
-                        <span class="text-caption text-center mt-2 grey-darken-1">
-                          Kéo và thả ảnh vào đây, hoặc nhấn để tải lên
-                        </span>
-                        <input type="file" class="d-none" ref="fileInput" accept="image/*" @change="handleFileUpload">
-                      </div>
-                    </v-card>
-                  </v-col>
                 </v-row>
 
                 <!-- Nút tạo dự án -->
@@ -143,9 +125,7 @@ const form = ref({
   visibility: 'private',
   startDate: '',
   endDate: '',
-  members: [],
-  avatarPreview: null,
-  avatarFile: null
+  members: []
 });
 
 const availableUsers = ref([]);
@@ -177,17 +157,6 @@ const getInitials = (name) => {
 
 const formRef = ref(null);
 
-const handleFileUpload = (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    form.value.avatarFile = file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      form.value.avatarPreview = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-};
 
 const handleSubmit = async () => {
   const { valid } = await formRef.value.validate();
@@ -207,8 +176,6 @@ const handleSubmit = async () => {
       visibility: form.value.visibility,
       startDate: form.value.startDate ? `${form.value.startDate}T00:00:00` : null,
       endDate: form.value.endDate ? `${form.value.endDate}T23:59:59` : null,
-      // memberIds: form.value.members.map(m => m.id) // Backend có thể chưa hỗ trợ trường này
-      // TODO: Xử lý upload avatar nếu có
     };
 
     // 1. Tạo dự án trước
@@ -236,15 +203,3 @@ const handleSubmit = async () => {
   }
 };
 </script>
-
-<style scoped>
-.upload-box {
-  cursor: pointer;
-  transition: background 0.3s;
-  border: 2px dashed #e0e0e0;
-}
-
-.upload-box:hover {
-  background-color: #f5f5f5;
-}
-</style>
