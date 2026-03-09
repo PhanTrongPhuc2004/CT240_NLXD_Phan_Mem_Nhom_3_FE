@@ -59,6 +59,10 @@
         <v-alert v-else-if="!loading" type="error" class="mt-4">
             Không tìm thấy thông tin công việc.
         </v-alert>
+
+        <div v-if="task" class="mt-6">
+            <CommentSection :taskId="task.id" />
+        </div>
     </v-container>
 </template>
 
@@ -69,6 +73,7 @@ import { useTaskStore } from '@/stores/task'
 import { useProjectStore } from '@/stores/project'
 import { useUserStore } from '@/stores/user'
 import { useAuthStore } from '@/stores/auth'
+import CommentSection from '@/components/CommentSection.vue'
 
 const route = useRoute()
 const taskStore = useTaskStore()
@@ -128,3 +133,4 @@ onMounted(async () => {
     }
 })
 </script>
+
