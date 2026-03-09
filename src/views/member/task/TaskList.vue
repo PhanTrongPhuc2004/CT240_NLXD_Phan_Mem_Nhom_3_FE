@@ -83,7 +83,7 @@ const getProjectName = (projectId) => {
 
 const goDetail = (item) => {
     const realItem = item.raw || item
-    router.push(`/member/tasks/${realItem.id}`)
+    router.push(`/member/task/${realItem.id}`)//
 }
 
 const headers = [
