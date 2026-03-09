@@ -186,20 +186,16 @@ const editedItem = ref({ ...defaultItem })
 const projectUsers = computed(() => {
     if (!editedItem.value.projectId) return []
     
-    // Cho phép ADMIN và MANAGER thấy tất cả user để có thể tự động thêm họ vào dự án
+    // Admin & Manager thấy tất cả user (để auto-add)
     if (['ADMIN', 'MANAGER'].includes(authStore.userRole)) {
-        return users.value;
+        return users.value
     }
 
-    // Các role khác chỉ thấy thành viên đã có trong dự án
-    const selectedProject = projects.value.find(p => p.id === editedItem.value.projectId)
-    if (!selectedProject) return [];
-    const projectMemberIds = [
-        selectedProject.ownerId,
-        ...(selectedProject.managerIds || []),
-        ...(selectedProject.memberIds || [])
-    ].filter(Boolean);
-    return users.value.filter(u => projectMemberIds.includes(u.id));
+    // Role khác chỉ thấy thành viên dự án
+    const project = projects.value.find(p => p.id === editedItem.value.projectId)
+    if (!project) return []
+    const memberIds = [project.ownerId, ...(project.managerIds || []), ...(project.memberIds || [])]
+    return users.value.filter(u => memberIds.includes(u.id))
 })
 
 const formTitle = computed(() => editedIndex.value === -1 ? 'Thêm công việc mới' : 'Chỉnh sửa công việc')
@@ -273,103 +269,53 @@ function closeDelete() {
 }
 
 async function save() {
-    // Clone dữ liệu để xử lý trước khi gửi
     const payload = { ...editedItem.value }
 
-    // Nếu là Member, chỉ cho phép cập nhật trạng thái, không cho tạo mới
-    if (!canCreate.value && editedIndex.value === -1) {
-        alert('Bạn không có quyền tạo công việc mới');
-        return;
-    }
+    // 1. Validate
+    if (!canCreate.value && editedIndex.value === -1) return alert('Bạn không có quyền tạo công việc mới')
+    if (!payload.title?.trim()) return alert('Vui lòng nhập tiêu đề công việc')
+    if (!payload.projectId) return alert('Vui lòng chọn dự án')
 
-    // Validate dữ liệu bắt buộc
-    if (!payload.title || !payload.title.trim()) {
-        alert('Vui lòng nhập tiêu đề công việc');
-        return;
-    }
-    if (!payload.projectId) {
-        alert('Vui lòng chọn dự án');
-        return;
-    }
-
-    // Xử lý dữ liệu rỗng và định dạng ngày tháng
-    if (editedIndex.value === -1) delete payload.id // Xóa ID rỗng khi tạo mới
-    
+    // 2. Format Data
+    if (editedIndex.value === -1) delete payload.id
     payload.description = payload.description || null
     payload.assigneeId = payload.assigneeId || null
-    
-    // Thêm giây vào deadline nếu thiếu (do input datetime-local chỉ trả về HH:mm)
-    if (!payload.deadline) {
-        payload.deadline = null;
-    } else if (payload.deadline.length === 16) {
-        payload.deadline += ':00'
-    }
+    payload.deadline = payload.deadline ? (payload.deadline.length === 16 ? payload.deadline + ':00' : payload.deadline) : null
 
-    // Tự động thêm thành viên/quản lý vào dự án nếu chưa có (chỉ dành cho Admin/Manager)
-    if (['ADMIN', 'MANAGER'].includes(authStore.userRole) && payload.projectId) {
-        const project = projects.value.find(p => p.id === payload.projectId);
+    // 3. Auto-add Member (Admin/Manager only)
+    if (['ADMIN', 'MANAGER'].includes(authStore.userRole) && payload.projectId && payload.assigneeId) {
+        const project = projects.value.find(p => p.id === payload.projectId)
         if (project) {
-            const projectMemberIds = [
-                project.ownerId,
-                ...(project.managerIds || []),
-                ...(project.memberIds || [])
-            ].filter(Boolean);
-
-            // 1. Xử lý Assignee: Nếu người được giao việc CHƯA thuộc dự án
-            if (payload.assigneeId && !projectMemberIds.includes(payload.assigneeId)) {
+            const members = [project.ownerId, ...(project.managerIds || []), ...(project.memberIds || [])]
+            if (!members.includes(payload.assigneeId)) {
                 try {
-                    // Tự động gọi API thêm thành viên
-                    await projectApi.assignMember(payload.projectId, { userId: payload.assigneeId });
-                    // Load lại danh sách dự án để cập nhật dữ liệu local
-                    await projectStore.fetchAllSystem();
+                    await projectApi.assignMember(payload.projectId, { userId: payload.assigneeId })
+                    await projectStore.fetchAllSystem()
                 } catch (err) {
-                    // Lỗi 403 có thể xảy ra nếu Manager không có quyền thêm thành viên.
-                    // Cần đảm bảo Backend cho phép Manager làm điều này.
-                    alert('Lỗi khi tự động thêm thành viên vào dự án: ' + (err.response?.data || err.message));
-                    return; // Dừng lại nếu thêm thất bại
-                }
-            }
-
-            // 2. Xử lý Current User (Manager): Nếu Manager đang sửa task mà chưa thuộc dự án
-            if (authStore.userRole === 'MANAGER') {
-                const currentUserId = authStore.user?.id;
-                const isProjectManager = (project.ownerId === currentUserId) || (project.managerIds || []).includes(currentUserId);
-                
-                if (!isProjectManager) {
-                    try {
-                        // Tự động thêm chính mình làm Manager của dự án để có quyền sửa task
-                        await projectApi.assignManager(payload.projectId, { userId: currentUserId });
-                        await projectStore.fetchAllSystem();
-                    } catch (err) {
-                        console.warn("Không thể tự động thêm Manager vào dự án:", err);
-                    }
+                    return alert('Lỗi thêm thành viên vào dự án: ' + (err.response?.data || err.message))
                 }
             }
         }
     }
 
+    // 4. Create/Update Task
     try {
-        if (editedIndex.value > -1) { // --- LOGIC CẬP NHẬT (Sửa) ---
-            const originalTask = tasks.value[editedIndex.value];
-
-            // 1. Nếu là Admin/Manager thì update thông tin chung
-            if (canCreate.value) await taskStore.update(payload.id, payload);
-
-            // 2. Nếu trạng thái có thay đổi (Member cũng làm được), gọi API chuyên dụng
-            if (originalTask.status !== payload.status) {
-                await taskStore.updateStatus(payload.id, payload.status, null);
+        if (editedIndex.value > -1) {
+            await taskStore.update(payload.id, payload)
+            const original = tasks.value[editedIndex.value]
+            if (original.status !== payload.status) {
+                await taskStore.updateStatus(payload.id, payload.status, null)
             }
-        } else { // --- LOGIC TẠO MỚI ---
-            await taskStore.create(payload);
+        } else {
+            await taskStore.create(payload)
         }
-        close();
+        close()
     } catch (error) {
-        console.error('Lỗi khi lưu công việc:', error);
-        let msg = error.response?.data?.message || error.response?.data || 'Dữ liệu không hợp lệ';
-        if (error.response?.status === 403) {
-            msg = 'Bạn không có quyền chỉnh sửa công việc trong dự án này (Bạn cần là Quản lý dự án).';
-        }
-        alert('Lưu thất bại: ' + msg);
+        console.error('Save task error:', error)
+        const msg = error.response?.status === 403 
+            ? 'Bạn không có quyền thực hiện hành động này.' 
+            : (error.response?.data?.message || error.response?.data || 'Lỗi lưu dữ liệu')
+        alert('Lưu thất bại: ' + msg)
     }
 }
 
