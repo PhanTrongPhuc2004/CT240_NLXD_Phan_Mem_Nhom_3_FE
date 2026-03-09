@@ -174,7 +174,7 @@
                 no-data-text="Chưa có công việc nào trong dự án này.">
                 
                 <template v-slot:item.title="{ item }">
-                  <span class="font-weight-medium text-primary cursor-pointer" @click="openTaskDialog(item)">
+                  <span class="font-weight-medium text-primary cursor-pointer" @click="goToTaskDetail(item)">
                     {{ item.title }}
                   </span>
                 </template>
@@ -915,6 +915,11 @@ const promoteToManager = async (userId) => {
   } catch (err) {
     alert("Lỗi khi thăng cấp: " + (err.response?.data || err.message));
   }
+};
+
+const goToTaskDetail = (task) => {
+  const realTask = task.raw || task;
+  router.push(`/member/tasks/${realTask.id}`);
 };
 
 const openTaskDialog = (item = null) => {
