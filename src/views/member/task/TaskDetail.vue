@@ -75,9 +75,6 @@
             Không tìm thấy thông tin công việc.
         </v-alert>
 
-        <div v-if="task" class="mt-6">
-            <CommentSection :taskId="task.id" />
-        </div>
     </v-container>
 </template>
 
