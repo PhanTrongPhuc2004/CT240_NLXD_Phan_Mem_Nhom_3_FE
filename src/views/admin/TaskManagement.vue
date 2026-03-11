@@ -12,7 +12,7 @@
                     <v-divider class="mx-4" inset vertical></v-divider>
                     <v-spacer></v-spacer>
                     <v-dialog v-model="dialog" max-width="700px">
-                        <template v-slot:activator="{ props }" v-if="canCreate">
+                        <template v-slot:activator="{ props }" v-if="canManageTasks">
                             <v-btn color="primary" dark class="mb-2" v-bind="props">
                                 Thêm công việc
                             </v-btn>
@@ -26,10 +26,10 @@
                                 <v-container>
                                     <v-row>
                                         <v-col cols="12">
-                                            <v-text-field v-model="editedItem.title" label="Tiêu đề công việc" required :readonly="!canCreate"></v-text-field>
+                                            <v-text-field v-model="editedItem.title" label="Tiêu đề công việc" required :readonly="!canManageTasks"></v-text-field>
                                         </v-col>
                                         <v-col cols="12">
-                                            <v-textarea v-model="editedItem.description" label="Mô tả" rows="3" :readonly="!canCreate"></v-textarea>
+                                            <v-textarea v-model="editedItem.description" label="Mô tả" rows="3" :readonly="!canManageTasks"></v-textarea>
                                         </v-col>
                                         <v-col cols="12" sm="6">
                                             <v-autocomplete
@@ -39,7 +39,7 @@
                                                 item-value="id"
                                                 label="Chọn Dự án"
                                                 clearable
-                                                :readonly="!canCreate"
+                                                :readonly="!canManageTasks"
                                                 @update:model-value="onProjectChange"
                                             ></v-autocomplete>
                                         </v-col>
@@ -53,7 +53,7 @@
                                                 :hint="!editedItem.projectId ? 'Vui lòng chọn dự án trước' : ''"
                                                 persistent-hint
                                                 clearable
-                                                :readonly="!canCreate"
+                                                :readonly="!canManageTasks"
                                             ></v-autocomplete>
                                         </v-col>
                                         <v-col cols="12" sm="6">
@@ -61,7 +61,7 @@
                                                 v-model="editedItem.priority"
                                                 :items="['LOW', 'MEDIUM', 'HIGH']"
                                                 label="Độ ưu tiên"
-                                                :readonly="!canCreate"
+                                                :readonly="!canManageTasks"
                                             ></v-select>
                                         </v-col>
                                         <v-col cols="12" sm="6">
@@ -72,7 +72,7 @@
                                             ></v-select>
                                         </v-col>
                                         <v-col cols="12" sm="6">
-                                            <v-text-field v-model="editedItem.deadline" label="Hạn chót (Deadline)" type="datetime-local" :readonly="!canCreate"></v-text-field>
+                                            <v-text-field v-model="editedItem.deadline" label="Hạn chót (Deadline)" type="datetime-local" :readonly="!canManageTasks"></v-text-field>
                                         </v-col>
                                     </v-row>
                                 </v-container>
@@ -80,8 +80,8 @@
 
                             <v-card-actions>
                                 <v-spacer></v-spacer>
-                                <v-btn color="blue-darken-1" variant="text" @click="close">Hủy</v-btn>
-                                <v-btn color="blue-darken-1" variant="text" @click="save">Lưu</v-btn>
+                                <v-btn color="blue-darken-1" variant="text" @click="close">{{ canManageTasks ? 'Hủy' : 'Đóng' }}</v-btn>
+                                <v-btn v-if="canManageTasks" color="blue-darken-1" variant="text" @click="save">Lưu</v-btn>
                             </v-card-actions>
                         </v-card>
                     </v-dialog>
@@ -131,8 +131,8 @@
             </template>
 
             <template v-slot:item.actions="{ item }">
-                <v-icon size="small" class="me-2" @click="editItem(item)">mdi-pencil</v-icon>
-                <v-icon size="small" @click="deleteItem(item)" v-if="canCreate">mdi-delete</v-icon>
+                <v-icon size="small" class="me-2" @click="editItem(item)">{{ canManageTasks ? 'mdi-pencil' : 'mdi-eye' }}</v-icon>
+                <v-icon size="small" @click="deleteItem(item)" v-if="canManageTasks">mdi-delete</v-icon>
             </template>
         </v-data-table>
     </v-container>
@@ -162,7 +162,8 @@ const userStore = useUserStore()
 const users = computed(() => userStore.users)
 
 const authStore = useAuthStore()
-const canCreate = computed(() => ['ADMIN', 'MANAGER'].includes(authStore.userRole))
+// Admin chỉ có quyền xem, không có quyền tạo/sửa/xóa task từ trang quản trị này.
+const canManageTasks = computed(() => authStore.userRole === 'MANAGER')
 
 const router = useRouter()
 
@@ -186,7 +187,7 @@ const editedItem = ref({ ...defaultItem })
 const projectUsers = computed(() => {
     if (!editedItem.value.projectId) return []
     
-    // Admin & Manager thấy tất cả user (để auto-add)
+    // Manager (và Admin ở chế độ xem) thấy tất cả user
     if (['ADMIN', 'MANAGER'].includes(authStore.userRole)) {
         return users.value
     }
@@ -198,7 +199,11 @@ const projectUsers = computed(() => {
     return users.value.filter(u => memberIds.includes(u.id))
 })
 
-const formTitle = computed(() => editedIndex.value === -1 ? 'Thêm công việc mới' : 'Chỉnh sửa công việc')
+const formTitle = computed(() => {
+  if (editedIndex.value === -1) return 'Thêm công việc mới'
+  // Nếu có quyền quản lý thì là "Chỉnh sửa", không thì là "Chi tiết"
+  return canManageTasks.value ? 'Chỉnh sửa công việc' : 'Chi tiết công việc'
+})
 
 // Hàm helper để lấy tên từ ID
 const getProjectName = (id) => {
@@ -272,7 +277,7 @@ async function save() {
     const payload = { ...editedItem.value }
 
     // 1. Validate
-    if (!canCreate.value && editedIndex.value === -1) return alert('Bạn không có quyền tạo công việc mới')
+    if (!canManageTasks.value) return alert('Bạn không có quyền thực hiện hành động này.')
     if (!payload.title?.trim()) return alert('Vui lòng nhập tiêu đề công việc')
     if (!payload.projectId) return alert('Vui lòng chọn dự án')
 
@@ -283,7 +288,7 @@ async function save() {
     payload.deadline = payload.deadline ? (payload.deadline.length === 16 ? payload.deadline + ':00' : payload.deadline) : null
 
     // 3. Auto-add Member (Admin/Manager only)
-    if (['ADMIN', 'MANAGER'].includes(authStore.userRole) && payload.projectId && payload.assigneeId) {
+    if (canManageTasks.value && payload.projectId && payload.assigneeId) {
         const project = projects.value.find(p => p.id === payload.projectId)
         if (project) {
             const members = [project.ownerId, ...(project.managerIds || []), ...(project.memberIds || [])]

@@ -551,14 +551,16 @@ const editForm = reactive({
 
 // Computed Properties
 const currentUserId = computed(() => authStore.user?.id);
+const isActualOwner = computed(() => project.value?.ownerId === currentUserId.value);
 // SỬA: Chỉ Admin hệ thống mới có quyền như Owner (cài đặt, xóa dự án). Manager chỉ quản lý trong phạm vi được giao.
-const isOwner = computed(() => project.value?.ownerId === currentUserId.value || authStore.userRole === 'ADMIN');
+const isOwner = computed(() => isActualOwner.value || authStore.userRole === 'ADMIN');
 
 const isManager = computed(() => project.value?.managerIds?.includes(currentUserId.value));
 const isMember = computed(() => project.value?.memberIds?.includes(currentUserId.value));
 const isPending = computed(() => project.value?.pendingMemberIds?.includes(currentUserId.value));
 const isAdmin = computed(() => authStore.userRole === 'ADMIN');
-const canManageTasks = computed(() => isAdmin.value || isOwner.value || isManager.value);
+// Admin không có quyền quản lý task, chỉ Owner hoặc Manager của dự án mới có.
+const canManageTasks = computed(() => isActualOwner.value || isManager.value);
 
 const canUpdateStatus = (task) => {
   const realTask = task.raw || task;
