@@ -8,7 +8,7 @@
             <v-card-title class="d-flex justify-space-between align-center py-4">
                 <span class="text-h5 font-weight-bold">{{ task.title }}</span>
                 <div>
-                    <v-menu location="bottom end">
+                    <v-menu location="bottom end" v-if="canChangeStatus">
                         <template v-slot:activator="{ props }">
                             <v-chip v-bind="props" :color="getStatusColor(task.status)" class="mr-2 cursor-pointer" link append-icon="mdi-chevron-down">
                                 {{ task.status }}
@@ -23,6 +23,9 @@
                             </v-list-item>
                         </v-list>
                     </v-menu>
+                    <v-chip v-else :color="getStatusColor(task.status)" class="mr-2">
+                        {{ task.status }}
+                    </v-chip>
                     <v-chip :color="getPriorityColor(task.priority)" variant="outlined">
                         {{ task.priority }}
                     </v-chip>
@@ -95,6 +98,15 @@ const authStore = useAuthStore()
 
 const task = computed(() => taskStore.currentTask)
 const loading = computed(() => taskStore.loading)
+
+const canChangeStatus = computed(() => {
+    // Admin chỉ có quyền xem
+    if (authStore.userRole === 'ADMIN') return false
+    // Manager có quyền thay đổi
+    if (authStore.userRole === 'MANAGER') return true
+    // Người được giao việc (Assignee) có quyền thay đổi
+    return task.value?.assigneeId === authStore.user?.id
+})
 
 // Helper lấy tên dự án
 const projectName = computed(() => {

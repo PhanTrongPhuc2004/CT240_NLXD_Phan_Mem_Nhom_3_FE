@@ -174,7 +174,7 @@
                 no-data-text="Chưa có công việc nào trong dự án này.">
                 
                 <template v-slot:item.title="{ item }">
-                  <span class="font-weight-medium text-primary cursor-pointer" @click="goToTaskDetail(item)">
+                  <span class="font-weight-medium">
                     {{ item.title }}
                   </span>
                 </template>
@@ -234,8 +234,7 @@
                 </template>
 
                 <template v-slot:item.actions="{ item }">
-                  <v-icon size="small" class="me-2" @click="openTaskDialog(item)">mdi-pencil</v-icon>
-                  <v-icon size="small" color="error" @click="deleteTaskItem(item)">mdi-delete</v-icon>
+                  <v-icon size="small" @click="goToTaskDetail(item)">mdi-eye</v-icon>
                 </template>
               </v-data-table>
             </v-card>
@@ -447,6 +446,7 @@
                   :items="['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']"
                   label="Trạng thái"
                   variant="outlined"
+                  :disabled="!canManageTasks"
                 ></v-select>
               </v-col>
               <v-col cols="12" sm="6">
@@ -566,6 +566,10 @@ const canUpdateStatus = (task) => {
   const realTask = task.raw || task;
   // Admin, Owner, Manager có quyền sửa tất cả
   if (canManageTasks.value) return true;
+  
+  // FIX: Admin hệ thống (nếu không phải Owner/Manager) thì CHẶN LUÔN, kể cả khi được assign
+  if (isAdmin.value) return false;
+
   // Member chỉ được sửa task được giao cho mình
   return realTask.assigneeId === currentUserId.value;
 };
@@ -582,10 +586,8 @@ const taskHeaders = computed(() => {
     { title: 'Trạng thái', key: 'status', width: '180px' },
     { title: 'Ưu tiên', key: 'priority' },
     { title: 'Hạn chót', key: 'deadline' },
+    { title: 'Hành động', key: 'actions', sortable: false, align: 'end' },
   ];
-  if (canManageTasks.value) {
-    headers.push({ title: 'Hành động', key: 'actions', sortable: false, align: 'end' });
-  }
   return headers;
 });
 

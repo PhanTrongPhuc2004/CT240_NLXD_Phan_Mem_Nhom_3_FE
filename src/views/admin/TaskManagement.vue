@@ -69,6 +69,7 @@
                                                 v-model="editedItem.status"
                                                 :items="['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']"
                                                 label="Trạng thái"
+                                                :disabled="!canManageTasks"
                                             ></v-select>
                                         </v-col>
                                         <v-col cols="12" sm="6">
@@ -101,9 +102,7 @@
             
             <!-- Custom hiển thị Tiêu đề (Click để xem chi tiết) -->
             <template v-slot:item.title="{ item }">
-                <a href="#" @click.prevent="goDetail(item)" class="text-decoration-none font-weight-bold text-primary">
-                    {{ item.title }}
-                </a>
+                {{ item.title }}
             </template>
 
             <!-- Custom hiển thị Tên Dự án -->
@@ -131,8 +130,7 @@
             </template>
 
             <template v-slot:item.actions="{ item }">
-                <v-icon size="small" class="me-2" @click="editItem(item)">{{ canManageTasks ? 'mdi-pencil' : 'mdi-eye' }}</v-icon>
-                <v-icon size="small" @click="deleteItem(item)" v-if="canManageTasks">mdi-delete</v-icon>
+                <v-icon size="small" @click="goDetail(item)">mdi-eye</v-icon>
             </template>
         </v-data-table>
     </v-container>
@@ -176,7 +174,7 @@ const headers = [
     { title: 'Ưu tiên', key: 'priority' },
     { title: 'Trạng thái', key: 'status' },
     { title: 'Hạn chót', key: 'deadline' },
-    { title: 'Hành động', key: 'actions', sortable: false },
+    { title: 'Hành động', key: 'actions', sortable: false, align: 'end' },
 ]
 
 const editedIndex = ref(-1)
