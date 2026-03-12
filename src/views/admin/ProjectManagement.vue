@@ -6,7 +6,7 @@
         <div class="d-flex align-center">
           <h1 class="text-h4 font-weight-bold">Quản lý Dự án Toàn hệ thống</h1>
           <v-spacer></v-spacer>
-          <v-btn color="primary" @click="goToCreateProject">Tạo dự án mới</v-btn>
+          <v-btn v-if="canCreate" color="primary" @click="goToCreateProject">Tạo dự án mới</v-btn>
         </div>
         <p class="mt-2 text-grey">Xem và quản lý tất cả các dự án đang hoạt động trong hệ thống.</p>
       </v-col>
@@ -46,7 +46,7 @@
         <template v-slot:item.actions="{ item }">
           <v-icon small class="me-2" @click="viewProject(item)">mdi-eye</v-icon>
           <v-icon small class="me-2" @click="editProject(item)">mdi-pencil</v-icon>
-          <v-icon small color="error" @click="confirmDelete(item)" v-if="isAdmin">mdi-delete</v-icon>
+          <v-icon small color="error" @click="confirmDelete(item)" v-if="canDeleteProject(item)">mdi-delete</v-icon>
         </template>
       </v-data-table>
     </v-card>
@@ -69,7 +69,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
@@ -89,7 +89,12 @@ const headers = [
   { title: 'Hành động', key: 'actions', sortable: false, align: 'end' },
 ];
 
-const isAdmin = authStore.userRole === 'ADMIN';
+const canCreate = computed(() => authStore.userRole === 'ADMIN');
+
+const canDeleteProject = (item) => {
+  // Chỉ Admin mới có quyền xóa dự án từ trang quản lý
+  return authStore.userRole === 'ADMIN';
+};
 
 // Dialog xác nhận xóa
 const dialogDelete = ref(false);
@@ -97,7 +102,7 @@ const projectToDelete = ref(null);
 
 // Gọi API để lấy dữ liệu khi component được mount
 onMounted(async () => {
-  // Gọi song song nhưng catch lỗi riêng để tránh crash toàn bộ nếu 1 API lỗi (đặc biệt là lỗi 500 từ users)
+  // Gọi song song nhưng catch lỗi r  iêng để tránh crash toàn bộ nếu 1 API lỗi (đặc biệt là lỗi 500 từ users)
   const p1 = projectStore.fetchAllSystem().catch(err => console.error("Lỗi tải dự án:", err));
   const p2 = userStore.fetchAll().catch(err => console.error("Lỗi tải users (có thể do Backend):", err));
   await Promise.all([p1, p2]);

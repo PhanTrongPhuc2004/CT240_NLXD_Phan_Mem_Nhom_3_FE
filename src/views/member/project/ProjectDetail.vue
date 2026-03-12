@@ -32,7 +32,7 @@
               <h1 class="text-h4 font-weight-bold text-primary mr-4">{{ project?.name }}</h1>
               <v-chip v-if="project?.status" :color="getStatusColor(project?.status)" label size="small"
                 class="font-weight-bold mr-2">
-                {{ project?.status }}
+                {{ getProjectStatusVN(project?.status) }}
               </v-chip>
               <v-chip v-if="project?.visibility" :color="project?.visibility === 'public' ? 'blue' : 'grey'" label size="small" class="font-weight-bold" :prepend-icon="project?.visibility === 'public' ? 'mdi-earth' : 'mdi-lock'">
                 {{ project?.visibility === 'public' ? 'Công khai' : 'Riêng tư' }}
@@ -45,7 +45,7 @@
 
           <!-- Action Buttons -->
           <div class="d-flex gap-2">
-            <!-- <v-btn v-if="isOwner || isAdmin" prepend-icon="mdi-cog" variant="outlined" color="primary"
+            <!-- <v-btn v-if="canEditProject" prepend-icon="mdi-cog" variant="outlined" color="primary"
               @click="activeTab = 'settings'">
               Cài đặt
             </v-btn> -->
@@ -59,6 +59,7 @@
               Hủy yêu cầu
             </v-btn>
             <!-- Nút Xin tham gia cho người chưa tham gia -->
+            <!-- Manager hệ thống nếu chưa tham gia thì vẫn hiện nút xin tham gia để lấy quyền chỉnh sửa -->
             <v-btn v-if="!isMember && !isOwner && !isPending && !isAdmin" prepend-icon="mdi-login"
               variant="elevated" color="primary" @click="handleJoinProject">
               Xin tham gia
@@ -83,7 +84,7 @@
             </v-avatar>
             <div>
               <div class="text-caption text-grey">Hoàn thành</div>
-              <div class="font-weight-bold">{{ completedTasksCount }}/{{ projectTasks.length }} Task</div>
+              <div class="font-weight-bold">{{ completedTasksCount }}/{{ projectTasks.length }} Công việc</div>
             </div>
           </div>
           <div class="d-flex align-center ml-6">
@@ -114,9 +115,9 @@
       <!-- Tabs Navigation -->
       <v-tabs v-model="activeTab" color="primary" bg-color="white" class="border-b px-6">
         <v-tab value="overview">Tổng quan</v-tab>
-        <v-tab value="tasks" v-if="isMember || isOwner || isAdmin">Công việc</v-tab>
+        <v-tab value="tasks" v-if="canViewTab">Công việc</v-tab>
         <v-tab value="members">Thành viên</v-tab>
-        <v-tab value="settings" v-if="isOwner || isAdmin">Cài đặt</v-tab>
+        <v-tab value="settings" v-if="canEditProject">Cài đặt</v-tab>
       </v-tabs>
 
       <!-- Tab Content -->
@@ -160,7 +161,7 @@
           </v-window-item>
 
           <!-- TAB 2: CÔNG VIỆC (TASKS) -->
-          <v-window-item value="tasks" v-if="isMember || isOwner || isAdmin">
+          <v-window-item value="tasks" v-if="canViewTab">
             <v-card class="pa-4" elevation="1">
               <div class="d-flex justify-space-between align-center mb-4">
                 <h3 class="text-h6">Danh sách công việc ({{ projectTasks.length }})</h3>
@@ -196,19 +197,19 @@
                         append-icon="mdi-chevron-down"
                         style="min-width: 140px; justify-content: space-between;"
                       >
-                        {{ item.status }}
+                        {{ getTaskStatusVN(item.status) }}
                       </v-chip>
                     </template>
                     <v-list density="compact" elevation="2">
                       <v-list-item
-                        v-for="status in ['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']"
-                        :key="status"
-                        :value="status"
-                        @click="updateTaskStatus(item, status)"
+                        v-for="opt in statusOptions"
+                        :key="opt.value"
+                        :value="opt.value"
+                        @click="updateTaskStatus(item, opt.value)"
                       >
                         <v-list-item-title>
-                          <v-chip :color="getTaskStatusColor(status)" size="x-small" label class="mr-2"></v-chip>
-                          {{ status }}
+                          <v-chip :color="getTaskStatusColor(opt.value)" size="x-small" label class="mr-2"></v-chip>
+                          {{ opt.title }}
                         </v-list-item-title>
                       </v-list-item>
                     </v-list>
@@ -221,12 +222,14 @@
                     class="font-weight-bold"
                     style="min-width: 140px; justify-content: center;"
                   >
-                    {{ item.status }}
+                    {{ getTaskStatusVN(item.status) }}
                   </v-chip>
                 </template>
 
                 <template v-slot:item.priority="{ item }">
-                  <v-chip :color="getTaskPriorityColor(item.priority)" size="small" variant="outlined">{{ item.priority }}</v-chip>
+                  <v-chip :color="getTaskPriorityColor(item.priority)" size="small" variant="outlined">
+                    {{ getTaskPriorityVN(item.priority) }}
+                  </v-chip>
                 </template>
 
                 <template v-slot:item.deadline="{ item }">
@@ -243,7 +246,7 @@
           <!-- TAB 3: THÀNH VIÊN -->
           <v-window-item value="members">
             <!-- SECTION: YÊU CẦU THAM GIA (Chỉ hiện cho Owner/Manager) -->
-            <v-card v-if="(isOwner || isManager || isAdmin) && project?.pendingMemberIds?.length > 0"
+            <v-card v-if="(canEditProject || isManager) && project?.pendingMemberIds?.length > 0"
               class="pa-4 mb-6 border-warning" elevation="1" variant="outlined" color="orange-lighten-5">
               <div class="d-flex align-center mb-2">
                 <v-icon color="warning" class="mr-2">mdi-account-clock</v-icon>
@@ -276,7 +279,7 @@
             <v-card class="pa-4" elevation="1">
               <div class="d-flex justify-space-between align-center mb-4">
                 <h3 class="text-h6">Thành viên dự án ({{ project?.memberIds?.length || 0 }})</h3>
-                <v-btn v-if="isOwner || isManager || isAdmin" color="primary" prepend-icon="mdi-account-plus"
+                <v-btn v-if="canEditProject || isManager" color="primary" prepend-icon="mdi-account-plus"
                   @click="dialogAddMember = true">
                   Thêm thành viên
                 </v-btn>
@@ -289,7 +292,7 @@
                     <UserAvatarName :user-id="project?.ownerId" />
                   </template>
                   <template v-slot:append>
-                    <v-chip color="purple" size="small" label>Owner</v-chip>
+                    <v-chip color="purple" size="small" label>Chủ dự án</v-chip>
                   </template>
                 </v-list-item>
 
@@ -299,9 +302,9 @@
                     <UserAvatarName :user-id="managerId" />
                   </template>
                   <template v-slot:append>
-                    <v-chip color="blue" size="small" label class="mr-2">Manager</v-chip>
+                    <v-chip color="blue" size="small" label class="mr-2">Quản lý</v-chip>
 
-                    <v-menu v-if="isOwner || isAdmin">
+                    <v-menu v-if="canEditProject">
                       <template v-slot:activator="{ props }">
                         <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props"></v-btn>
                       </template>
@@ -329,12 +332,12 @@
                     <UserAvatarName :user-id="memberId" />
                   </template>
                   <template v-slot:append>
-                    <v-menu v-if="isOwner || isManager || isAdmin">
+                    <v-menu v-if="canEditProject || isManager">
                       <template v-slot:activator="{ props }">
                         <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props"></v-btn>
                       </template>
                       <v-list dense>
-                        <v-list-item v-if="isOwner || isAdmin" @click="promoteToManager(memberId)">
+                        <v-list-item v-if="canEditProject" @click="promoteToManager(memberId)">
                           <template v-slot:prepend>
                             <v-icon color="success">mdi-account-arrow-up</v-icon>
                           </template>
@@ -355,7 +358,7 @@
           </v-window-item>
 
           <!-- TAB 4: CÀI ĐẶT (OWNER ONLY) -->
-          <v-window-item value="settings" v-if="isOwner || isAdmin">
+          <v-window-item value="settings" v-if="canEditProject">
             <v-card class="pa-6" elevation="1">
               <h3 class="text-h6 mb-4">Cài đặt dự án</h3>
               <v-form @submit.prevent="updateProjectInfo">
@@ -388,13 +391,16 @@
 
               <v-divider class="my-8"></v-divider>
 
-              <h3 class="text-h6 text-error mb-2">Vùng nguy hiểm</h3>
-              <div class="border border-error rounded pa-4 bg-red-lighten-5 d-flex align-center justify-space-between">
-                <div>
-                  <div class="font-weight-bold text-error">Xóa dự án này</div>
-                  <div class="text-caption">Hành động này không thể hoàn tác. Tất cả dữ liệu sẽ bị mất.</div>
+              <!-- Chỉ Owner hoặc Admin hệ thống mới được xóa dự án. Manager hệ thống không được xóa. -->
+              <div v-if="isOwner || isAdmin">
+                <h3 class="text-h6 text-error mb-2">Vùng nguy hiểm</h3>
+                <div class="border border-error rounded pa-4 bg-red-lighten-5 d-flex align-center justify-space-between">
+                  <div>
+                    <div class="font-weight-bold text-error">Xóa dự án này</div>
+                    <div class="text-caption">Hành động này không thể hoàn tác. Tất cả dữ liệu sẽ bị mất.</div>
+                  </div>
+                  <v-btn color="error" variant="elevated" @click="deleteProject">Xóa dự án</v-btn>
                 </div>
-                <v-btn color="error" variant="elevated" @click="deleteProject">Xóa dự án</v-btn>
               </div>
             </v-card>
           </v-window-item>
@@ -434,7 +440,9 @@
               <v-col cols="12" sm="6">
                 <v-select
                   v-model="editedTask.priority"
-                  :items="['LOW', 'MEDIUM', 'HIGH']"
+                  :items="priorityOptions"
+                  item-title="title"
+                  item-value="value"
                   label="Độ ưu tiên"
                   variant="outlined"
                   :readonly="!canManageTasks"
@@ -443,7 +451,9 @@
               <v-col cols="12" sm="6">
                 <v-select
                   v-model="editedTask.status"
-                  :items="['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']"
+                  :items="statusOptions"
+                  item-title="title"
+                  item-value="value"
                   label="Trạng thái"
                   variant="outlined"
                   :disabled="!canManageTasks"
@@ -552,23 +562,33 @@ const editForm = reactive({
 // Computed Properties
 const currentUserId = computed(() => authStore.user?.id);
 const isActualOwner = computed(() => project.value?.ownerId === currentUserId.value);
-// SỬA: Chỉ Admin hệ thống mới có quyền như Owner (cài đặt, xóa dự án). Manager chỉ quản lý trong phạm vi được giao.
-const isOwner = computed(() => isActualOwner.value || authStore.userRole === 'ADMIN');
+const isOwner = computed(() => isActualOwner.value);
 
 const isManager = computed(() => project.value?.managerIds?.includes(currentUserId.value));
 const isMember = computed(() => project.value?.memberIds?.includes(currentUserId.value));
 const isPending = computed(() => project.value?.pendingMemberIds?.includes(currentUserId.value));
+
 const isAdmin = computed(() => authStore.userRole === 'ADMIN');
-// Admin không có quyền quản lý task, chỉ Owner hoặc Manager của dự án mới có.
-const canManageTasks = computed(() => isActualOwner.value || isManager.value);
+const isSystemManager = computed(() => authStore.userRole === 'MANAGER');
+
+// Kiểm tra xem User (Manager) có tham gia dự án không (Owner, Manager, hoặc Member)
+const isProjectParticipant = computed(() => isActualOwner.value || isManager.value || isMember.value);
+
+// Quyền chỉnh sửa dự án (Settings, Member): Admin (Global) OR Owner OR (Manager (System) + Tham gia dự án)
+const canEditProject = computed(() => isAdmin.value || isActualOwner.value || (isSystemManager.value && isProjectParticipant.value));
+
+// Quyền xem Tab: Admin (Global) OR Member/Manager/Owner
+const canViewTab = computed(() => isAdmin.value || isSystemManager.value || isProjectParticipant.value);
+
+// Quyền quản lý Task: Admin (Global) OR Owner OR ProjectManager OR (Manager (System) + Tham gia dự án)
+const canManageTasks = computed(() => isAdmin.value || isActualOwner.value || isManager.value || (isSystemManager.value && isProjectParticipant.value));
 
 const canUpdateStatus = (task) => {
   const realTask = task.raw || task;
   // Admin, Owner, Manager có quyền sửa tất cả
   if (canManageTasks.value) return true;
   
-  // FIX: Admin hệ thống (nếu không phải Owner/Manager) thì CHẶN LUÔN, kể cả khi được assign
-  if (isAdmin.value) return false;
+  // Admin/Manager hệ thống luôn có quyền (đã check ở canManageTasks trên), nên không cần chặn nữa
 
   // Member chỉ được sửa task được giao cho mình
   return realTask.assigneeId === currentUserId.value;
@@ -625,6 +645,41 @@ const projectMembersList = computed(() => {
 });
 
 // Methods
+// --- CÁC HÀM VIỆT HÓA ---
+const statusOptions = [
+  { title: 'Cần làm', value: 'TO_DO' },
+  { title: 'Đang làm', value: 'IN_PROGRESS' },
+  { title: 'Hoàn thành', value: 'DONE' },
+  { title: 'Đã hủy', value: 'CANCELLED' }
+];
+
+const priorityOptions = [
+  { title: 'Thấp', value: 'LOW' },
+  { title: 'Trung bình', value: 'MEDIUM' },
+  { title: 'Cao', value: 'HIGH' }
+];
+
+const getProjectStatusVN = (status) => {
+  const map = {
+    'ACTIVE': 'Đang hoạt động',
+    'INACTIVE': 'Ngừng hoạt động',
+    'COMPLETED': 'Hoàn thành',
+    'CANCELLED': 'Đã hủy'
+  };
+  return map[status] || status;
+};
+
+const getTaskStatusVN = (status) => {
+  const found = statusOptions.find(o => o.value === status);
+  return found ? found.title : status;
+};
+
+const getTaskPriorityVN = (priority) => {
+  const found = priorityOptions.find(o => o.value === priority);
+  return found ? found.title : priority;
+};
+// -------------------------
+
 const getStatusColor = (status) => {
   switch (status) {
     case 'ACTIVE': return 'success';
@@ -672,29 +727,51 @@ const loadProjectData = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const res = await projectApi.getById(route.params.id);
+    let p;
+    try {
+      const res = await projectApi.getById(route.params.id);
+      p = res.data;
+    } catch (apiErr) {
+      // Fallback: Nếu API chi tiết trả về lỗi (404/403) nhưng là Admin/Manager, 
+      // thử tìm trong danh sách toàn hệ thống (vì API getById backend có thể đang chặn non-member)
+      if (isAdmin.value || isSystemManager.value) {
+        if (projectStore.allSystemProjects.length === 0) {
+          await projectStore.fetchAllSystem();
+        }
+        // So sánh lỏng (==) để tránh lỗi khác kiểu dữ liệu (string vs number) hoặc fallback _id
+        const found = projectStore.allSystemProjects.find(x => x.id == route.params.id || x._id == route.params.id);
+        
+        if (found) {
+          p = found;
+        } else {
+          throw apiErr;
+        }
+      } else {
+        throw apiErr;
+      }
+    }
     
-    // Kiểm tra quyền truy cập: Nếu Private thì chỉ Owner, Admin hoặc Member mới được xem
-    const p = res.data;
+    // Kiểm tra quyền truy cập logic Frontend: Nếu Private thì chỉ Owner, Admin hoặc Member mới được xem
     if (p.visibility === 'private') {
       const uid = authStore.user?.id;
       const isOwner = p.ownerId === uid;
       const isMember = p.memberIds?.includes(uid);
-      const isAdmin = authStore.userRole === 'ADMIN';
+      // isAdmin đã bao gồm logic Manager ở trên
 
-      if (!isOwner && !isAdmin && !isMember) {
+      // Admin và Manager hệ thống được quyền xem (View Only)
+      if (!isOwner && !isAdmin.value && !isMember && !isSystemManager.value) {
         throw new Error("Dự án này là riêng tư. Bạn không có quyền truy cập.");
       }
     }
 
-    project.value = res.data;
+    project.value = p;
 
-    editForm.name = res.data.name;
-    editForm.description = res.data.description;
+    editForm.name = p.name;
+    editForm.description = p.description;
     // Cắt chuỗi ISO (YYYY-MM-DDTHH:mm:ss) lấy phần ngày YYYY-MM-DD để hiển thị vào input type="date"
-    editForm.startDate = res.data.startDate ? res.data.startDate.split('T')[0] : '';
-    editForm.endDate = res.data.endDate ? res.data.endDate.split('T')[0] : '';
-    editForm.visibility = res.data.visibility || 'private';
+    editForm.startDate = p.startDate ? p.startDate.split('T')[0] : '';
+    editForm.endDate = p.endDate ? p.endDate.split('T')[0] : '';
+    editForm.visibility = p.visibility || 'private';
 
     // Load tasks và users
     taskStore.fetchAll(); 
@@ -709,7 +786,8 @@ const loadProjectData = async () => {
 
 const fetchAllUsers = async () => {
   // Chỉ Admin mới thử lấy toàn bộ danh sách users để tránh lỗi 500/403 với Member
-  if (authStore.userRole === 'ADMIN') {
+  // SỬA: Cho phép cả MANAGER tải danh sách user
+  if (['ADMIN', 'MANAGER'].includes(authStore.userRole)) {
     try {
       const res = await api.get('/users');
       allUsers.value = res.data;
@@ -770,7 +848,7 @@ const deleteProject = async () => {
   try {
     await projectStore.delete(project.value.id);
     // Kiểm tra quyền để điều hướng về đúng trang
-    if (isAdmin.value) {
+    if (isAdmin.value || isSystemManager.value) {
       router.replace('/admin/projects'); // Dùng replace để không back lại được trang đã xóa
     } else {
       router.replace({ name: 'MemberProjects' });
@@ -839,7 +917,7 @@ const onSearchUser = async (keyword) => {
 
   // WORKAROUND: Nếu là Admin và đã tải allUsers, thực hiện tìm kiếm client-side
   // Điều này giúp tránh gọi API đang bị lỗi Backend Routing (/users/search bị nhầm là /users/{id})
-  if (authStore.userRole === 'ADMIN' && allUsers.value.length > 0) {
+  if ((authStore.userRole === 'ADMIN' || authStore.userRole === 'MANAGER') && allUsers.value.length > 0) {
     const k = keyword.toLowerCase();
     searchResults.value = allUsers.value.filter(u => 
       (u.fullName?.toLowerCase().includes(k)) ||
@@ -1003,8 +1081,11 @@ const updateTaskStatus = async (task, newStatus) => {
     // Sử dụng updateStatus chuyên biệt để tránh lỗi 403 (Member có thể update status nhưng không update được toàn bộ task)
     await taskStore.updateStatus(realTask.id, newStatus, '');
   } catch (err) {
-    task.status = oldStatus; // Hoàn tác nếu lỗi
-    alert("Lỗi cập nhật trạng thái: " + (err.response?.data?.message || err.message));
+    realTask.status = oldStatus; // Hoàn tác đúng vào object reactive (realTask) thay vì task (slot scope)
+    const msg = err.response?.status === 403 
+      ? "Backend từ chối quyền này (Bạn cần quyền Manager/Assignee)." 
+      : (err.response?.data?.message || err.message);
+    alert("Lỗi cập nhật trạng thái: " + msg);
   }
 };
 

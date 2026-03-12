@@ -1,8 +1,8 @@
 <!-- src/layouts/AdminLayout.vue -->
 <template>
-    <v-app>
+    <v-app class="admin-background">
         <!-- Header trên cùng -->
-        <v-app-bar app color="primary" dark flat elevation="2">
+        <v-app-bar app color="primary" dark flat elevation="0" class="glass-header">
             <v-toolbar-title class="font-weight-bold">
                 Quản lý công việc nhóm
             </v-toolbar-title>
@@ -13,67 +13,35 @@
         </v-app-bar>
 
         <!-- Sidebar trái -->
-        <v-navigation-drawer permanent app width="280" class="elevation-1">
+        <v-navigation-drawer permanent app width="280" class="glass-sidebar" elevation="0" :rail="rail" @mouseenter="rail = false" @mouseleave="rail = true">
             <v-list nav dense>
                 <!-- Tiêu đề hệ thống -->
-                <v-list-item class="px-6 py-5">
-                    <v-list-item-title class="text-h6 font-weight-bold black--text">
-                        Quản trị hệ thống
-                    </v-list-item-title>
+                <v-list-item class="px-2 py-4" prepend-icon="mdi-shield-crown" title="Quản trị hệ thống">
+                    <template v-slot:title>
+                        <span class="text-h6 font-weight-bold black--text">Quản trị hệ thống</span>
+                    </template>
                 </v-list-item>
 
                 <v-divider class="mb-2"></v-divider>
 
                 <!-- Menu chính -->
-                <v-list-item-group v-model="selectedItem" mandatory>
-                    <v-list-item :to="{ name: 'AdminDashboard' }" exact class="menu-item px-4">
-                        <v-list-item-icon>
-                            <v-icon>mdi-view-dashboard</v-icon>
-                        </v-list-item-icon>
-                        <v-list-item-title>Bảng điều khiển</v-list-item-title>
-                    </v-list-item>
+                <v-list-item :to="{ name: 'AdminDashboard' }" exact class="menu-item" prepend-icon="mdi-view-dashboard" title="Bảng điều khiển"></v-list-item>
 
-                    <v-list-item :to="{ name: 'ProjectManagement' }" class="menu-item px-4">
-                        <v-list-item-icon>
-                            <v-icon>mdi-folder-multiple-outline</v-icon>
-                        </v-list-item-icon>
-                        <v-list-item-title>Dự án</v-list-item-title>
-                    </v-list-item>
+                <v-list-item :to="{ name: 'ProjectManagement' }" class="menu-item" prepend-icon="mdi-folder-multiple-outline" title="Dự án"></v-list-item>
 
-                    <v-list-item :to="{ name: 'UserManagement' }" class="menu-item px-4">
-                        <v-list-item-icon>
-                            <v-icon>mdi-account-group-outline</v-icon>
-                        </v-list-item-icon>
-                        <v-list-item-title>Người dùng</v-list-item-title>
-                    </v-list-item>
+                <v-list-item v-if="isAdmin" :to="{ name: 'UserManagement' }" class="menu-item" prepend-icon="mdi-account-group-outline" title="Người dùng"></v-list-item>
 
-                    <v-list-item :to="{ name: 'TaskManagement' }" class="menu-item px-4">
-                        <v-list-item-icon>
-                            <v-icon>mdi-clipboard-check-outline</v-icon>
-                        </v-list-item-icon>
-                        <v-list-item-title>Công việc</v-list-item-title>
-                    </v-list-item>
+                <v-list-item :to="{ name: 'TaskManagement' }" class="menu-item" prepend-icon="mdi-clipboard-check-outline" title="Công việc"></v-list-item>
 
-                    <v-list-item :to="{ name: 'NotificationManagement' }" class="menu-item px-4">
-                        <v-list-item-icon>
-                            <v-icon>mdi-bell-outline</v-icon>
-                        </v-list-item-icon>
-                        <v-list-item-title>Thông báo</v-list-item-title>
-                    </v-list-item>
+                <v-list-item :to="{ name: 'NotificationManagement' }" class="menu-item" prepend-icon="mdi-bell-outline" title="Thông báo"></v-list-item>
 
-                    <v-list-item :to="{ name: 'ReportManagement' }" class="menu-item px-4">
-                        <v-list-item-icon>
-                            <v-icon>mdi-chart-bar</v-icon>
-                        </v-list-item-icon>
-                        <v-list-item-title>Báo cáo & Thống kê</v-list-item-title>
-                    </v-list-item>
-                </v-list-item-group>
+                <v-list-item :to="{ name: 'ReportManagement' }" class="menu-item" prepend-icon="mdi-chart-bar" title="Báo cáo & Thống kê"></v-list-item>
             </v-list>
         </v-navigation-drawer>
 
         <!-- Nội dung chính -->
         <v-main>
-            <v-container fluid class="pa-6">
+            <v-container fluid class="pa-6 content-area">
                 <router-view />
             </v-container>
         </v-main>
@@ -81,14 +49,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.userRole === 'ADMIN')
 const router = useRouter()
+const rail = ref(true)
 
-const selectedItem = ref(0)
 
 const logout = () => {
     authStore.logout()
@@ -97,9 +66,38 @@ const logout = () => {
 </script>
 
 <style scoped>
-.v-navigation-drawer {
-    background-color: #ffffff !important;
-    border-right: 1px solid #e0e0e0 !important;
+/* Tạo nền gradient nhẹ cho toàn bộ trang Admin để hiệu ứng kính nổi bật hơn */
+.admin-background {
+    background: linear-gradient(135deg, #eef2f3 0%, #e0eafc 100%) !important;
+    background-attachment: fixed !important;
+}
+
+/* --- GLASS SIDEBAR STYLE --- */
+.glass-sidebar {
+    /* Màu trắng đục 75% */
+    background: rgba(255, 255, 255, 0.75) !important;
+    /* Hiệu ứng mờ đằng sau */
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    /* Viền phải nhẹ */
+    border-right: 1px solid rgba(255, 255, 255, 0.8) !important;
+    /* Đổ bóng nhẹ để tách biệt */
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.05) !important;
+    /* Hiệu ứng trượt mượt mà (chậm hơn mặc định để tạo cảm giác "từ từ") */
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* --- GLASS HEADER STYLE (Optional) --- */
+/* Nếu bạn muốn header cũng đồng bộ (nhưng giữ màu primary) */
+.glass-header {
+    background: rgba(var(--v-theme-primary), 0.9) !important; /* Vuetify 3 var, hoặc dùng hex code cứng */
+}
+
+/* Vùng nội dung trong suốt để thấy nền gradient */
+.v-main {
+    background: transparent !important;
+    /* Thêm transition cho padding-left để nội dung bị đẩy vào mượt mà cùng tốc độ với sidebar */
+    transition: padding-left 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .v-list-item__title {
@@ -110,31 +108,62 @@ const logout = () => {
     color: #000000 !important;
 }
 
-.v-list-item__icon .v-icon {
+.v-list-item .v-icon {
     color: #000000 !important;
     font-size: 24px !important;
 }
 
 .menu-item {
     min-height: 52px !important;
-    border-bottom: 1px solid #e8ecef !important;
+    margin-bottom: 4px !important;
+    border-radius: 8px !important; /* Bo tròn item menu cho hợp style kính */
+    border-bottom: none !important; /* Bỏ gạch chân cũ */
+    
+    /* Setup cho hiệu ứng trượt background */
+    position: relative;
+    z-index: 1;
+    overflow: hidden; /* Quan trọng: để ẩn phần background khi nó trượt ra ngoài */
 }
 
-.menu-item:last-child {
-    border-bottom: none !important;
+/* Tạo lớp nền ảo (pseudo-element) để trượt vào */
+.menu-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, #1976d2, #64b5f6);
+    z-index: -1; /* Nằm dưới chữ */
+    
+    /* Trạng thái mặc định: Ẩn sang bên trái (-100%) */
+    transform: translateX(-100%);
+    /* Hiệu ứng trượt mượt mà (ease-out) */
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* Khi active: nền xanh đậm + chữ trắng */
+/* KHI ACTIVE: Trượt nền từ trái vào vị trí 0 (Hiện ra) */
+.v-list-item--active::before {
+    transform: translateX(0);
+}
+
+.menu-item:hover {
+    background-color: rgba(0, 0, 0, 0.04); /* Hover nhẹ */
+}
+
 .v-list-item--active {
-    background-color: #1976d2 !important;
+    background: transparent !important; /* Tắt background mặc định của Vuetify để dùng background trượt của mình */
+    box-shadow: 0 4px 15px rgba(25, 118, 210, 0.3);
 }
 
 .v-list-item--active .v-list-item__title,
 .v-list-item--active .v-icon {
     color: #ffffff !important;
+    /* Thêm transition cho màu chữ để đổi màu nhịp nhàng cùng lúc với nền trượt vào */
+    transition: color 0.3s ease;
 }
 
 .v-divider {
-    border-color: #e0e0e0 !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
 }
 </style>
