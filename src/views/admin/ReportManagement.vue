@@ -1,12 +1,19 @@
 <template>
   <v-container>
-    <h2 class="mb-6">Báo cáo & Thống kê</h2>
+    <v-row class="align-center mb-6">
+      <v-col cols="6">
+        <h2>Báo cáo & Thống kê</h2>
+      </v-col>
 
+      <v-col cols="6" class="d-flex justify-end">
+        <v-btn color="#111111" @click="goDetail"> Xem báo cáo chi tiết </v-btn>
+      </v-col>
+    </v-row>
     <!-- Bộ lọc -->
     <v-card class="pa-4 mb-6">
       <v-row>
         <v-col cols="3">
-          <v-select label="Chọn dự án" :items="projects" variant="outlined" />
+          <v-select v-model="selectedProject" label="Chọn dự án" :items="projects" item-title="name" item-value="id" variant="outlined" @update:model-value="fetchStatistics" />
         </v-col>
 
         <v-col cols="3">
@@ -18,7 +25,7 @@
         </v-col>
 
         <v-col cols="3" class="d-flex justify-center align-center ga-2">
-          <v-btn color="primary">Áp dụng</v-btn>
+          <v-btn color="primary" @click="fetchStatistics">Áp dụng</v-btn>
           <v-btn color="green" @click="exportDialog = true"> Xuất báo cáo </v-btn>
         </v-col>
       </v-row>
@@ -139,7 +146,7 @@
 
               <!-- button -->
               <template v-slot:append>
-                <v-btn variant="outlined" size="small" class="text-none btn-view"> Xem </v-btn>
+                <v-btn variant="outlined" size="small" class="text-none btn-view" @click="goToTaskReport(task.projectId)"> Xem </v-btn>
               </template>
             </v-list-item>
 
@@ -163,7 +170,7 @@
                 Tùy chỉnh các lựa chọn để xuất báo cáo tối ưu cho màn hình máy tính (desktop).
               </p>
 
-              <v-select label="Dự án" :items="projects" variant="outlined" class="mb-1" />
+              <v-select v-model="selectedProject" label="Dự án" :items="projects" item-title="name" item-value="id" variant="outlined" class="mb-1" />
 
               <v-row>
                 <v-col cols="6">
@@ -207,7 +214,7 @@
 
               <v-row>
                 <v-col cols="4">
-                  <v-btn block variant="outlined" class="btn-export">
+                  <v-btn block :color="exportFormat === 'csv' ? 'blue' : ''" variant="outlined" class="btn-export" @click="exportFormat = 'csv'">
                     <div class="btn-content">
                       CSV
                       <span class="sub-text text-none">Dữ liệu thô</span>
@@ -216,7 +223,7 @@
                 </v-col>
 
                 <v-col cols="4">
-                  <v-btn block variant="outlined" class="btn-export">
+                  <v-btn block :color="exportFormat === 'pdf' ? 'blue' : ''" variant="outlined" class="btn-export" @click="exportFormat = 'pdf'">
                     <div class="btn-content">
                       PDF
                       <span class="sub-text text-none">Tài liệu cố định</span>
@@ -225,7 +232,7 @@
                 </v-col>
 
                 <v-col cols="4">
-                  <v-btn block variant="outlined" class="btn-export">
+                  <v-btn block :color="exportFormat === 'excel' ? 'blue' : ''" variant="outlined" class="btn-export" @click="exportFormat = 'excel'">
                     <div class="btn-content">
                       Excel (XLSX)
                       <span class="sub-text text-none">Bảng tính</span>
@@ -321,7 +328,7 @@
                 <thead>
                   <tr>
                     <th>Ngày</th>
-                    <th>Người yêu cầu</th>
+                    <th>Dự án</th>
                     <th>Định dạng</th>
                     <th>Trạng thái</th>
                     <th></th>
@@ -332,17 +339,22 @@
                   <tr v-for="item in exportHistory" :key="item.date">
                     <td>{{ item.date }}</td>
 
-                    <td>{{ item.user }}</td>
+                    <td>{{ item.projectName }}</td>
 
                     <td>{{ item.format }}</td>
 
-                    <td>{{ item.status }}</td>
+                    <td>
+                      <v-chip :color="item.status === 'Hoàn thành' ? 'success' : 'error'" size="small">
+                        {{ item.status }}
+                      </v-chip>
+                    </td>
 
                     <td>
-                      <v-btn icon="mdi-download" size="small" variant="text" />
-
-                      <v-btn icon="mdi-delete" size="small" variant="text" />
+                      <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="deleteHistory(item.date)" />
                     </td>
+                  </tr>
+                  <tr v-if="exportHistory.length === 0">
+                    <td colspan="5" class="text-center text-grey">Chưa có lịch sử xuất</td>
                   </tr>
                 </tbody>
               </v-table>
@@ -364,172 +376,229 @@
   </v-container>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted, computed, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import Chart from 'chart.js/auto'
+import { projectApi } from '@/api/projectApi'
+import { reportApi } from '@/api/reportApi'
+import { taskApi } from '@/api/taskApi'
 
-export default {
-  data() {
-    return {
-      projects: ['Website', 'Mobile App', 'CRM System'],
+const router = useRouter()
 
-      status: [
-        {
-          name: 'To Do',
-          count: 10,
-          percent: 13,
-        },
-        {
-          name: 'Đang tiến hành',
-          count: 15,
-          percent: 20,
-        },
-        {
-          name: 'Hoàn thành',
-          count: 45,
-          percent: 60,
-        },
-        {
-          name: 'Đã hủy',
-          count: 5,
-          percent: 7,
-        },
-      ],
+const projects = ref([])
+const selectedProject = ref(null)
+const fromDate = ref('')
+const toDate = ref('')
 
-      lateTasks: [
-        {
-          title: 'Thiết kế giao diện Dashboard',
-          project: 'Website Quản lý công việc',
-          days: 3,
-        },
-        {
-          title: 'Viết API đăng nhập',
-          project: 'Hệ thống Backend',
-          days: 2,
-        },
-        {
-          title: 'Tối ưu database',
-          project: 'CRM System',
-          days: 5,
-        },
-        {
-          title: 'Test chức năng báo cáo',
-          project: 'Dashboard Analytics',
-          days: 1,
-        },
-        {
-          title: 'Cập nhật tài liệu hướng dẫn',
-          project: 'Project Documentation',
-          days: 4,
-        },
-      ],
-      done: 45,
-      total: 60,
+const status = ref([
+  { name: 'To Do', count: 10, percent: 13 },
+  { name: 'Đang tiến hành', count: 15, percent: 20 },
+  { name: 'Hoàn thành', count: 45, percent: 60 },
+  { name: 'Đã hủy', count: 5, percent: 7 },
+])
+const lateTasks = ref([
+  { title: 'Thiết kế giao diện Dashboard', project: 'Website Quản lý công việc', days: 3 },
+  { title: 'Viết API đăng nhập', project: 'Hệ thống Backend', days: 2 },
+  { title: 'Tối ưu database', project: 'CRM System', days: 5 },
+])
+const done = ref(45)
+const total = ref(60)
 
-      exportDialog: false,
+const exportDialog = ref(false)
+const exportFormat = ref('pdf')
+const exportHistory = ref([])
 
-      exportHistory: [
-        {
-          date: '2024-01-10',
-          user: 'Nguyễn Văn A',
-          format: 'PDF',
-          status: 'Hoàn thành',
-        },
-        {
-          date: '2024-01-08',
-          user: 'Trần Thị B',
-          format: 'Excel',
-          status: 'Thất bại',
-        },
-        {
-          date: '2024-01-05',
-          user: 'Lê Cảnh C',
-          format: 'CSV',
-          status: 'Hoàn thành',
-        },
-      ],
-      orientation: 'portrait',
-      paperSize: 'a4',
-    }
-  },
-
-  computed: {
-    progressPercent() {
-      return Math.round((this.done / this.total) * 100)
-    },
-  },
-
-  mounted() {
-    this.createCharts()
-  },
-
-  methods: {
-    createCharts() {
-      // line chart
-      new Chart(document.getElementById('progressChart'), {
-        type: 'line',
-
-        data: {
-          labels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4', 'Tuần 5'],
-
-          datasets: [
-            {
-              label: 'Tiến độ',
-
-              data: [20, 35, 50, 70, 80],
-
-              borderColor: '#1976d2',
-
-              tension: 0.4,
-            },
-          ],
-        },
-      })
-
-      // donut chart
-      new Chart(document.getElementById('statusChart'), {
-        type: 'doughnut',
-
-        data: {
-          labels: ['To Do', 'Đang tiến hành', 'Hoàn thành', 'Đã hủy'],
-
-          datasets: [
-            {
-              data: [10, 15, 45, 5],
-
-              backgroundColor: ['#9e9e9e', '#2196f3', '#4caf50', '#f44336'],
-
-              borderWidth: 0,
-              spacing: 4,
-              borderRadius: 6,
-            },
-          ],
-        },
-
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: '70%',
-          plugins: {
-            legend: {
-              position: 'bottom',
-              align: 'center',
-              labels: {
-                boxWidth: 15,
-                padding: 15,
-              },
-            },
-          },
-        },
-      })
-    },
-    //Xuất báo cáo
-    exportReport() {
-      console.log('Xuất báo cáo')
-
-      this.exportDialog = false
-    },
-  },
+const loadHistory = () => {
+  const saved = localStorage.getItem('report_export_history')
+  if (saved) {
+    try {
+      exportHistory.value = JSON.parse(saved)
+    } catch(e) {}
+  }
 }
+
+const saveHistory = () => {
+  localStorage.setItem('report_export_history', JSON.stringify(exportHistory.value))
+}
+
+const deleteHistory = (date) => {
+  exportHistory.value = exportHistory.value.filter(item => item.date !== date)
+  saveHistory()
+}
+
+const orientation = ref('portrait')
+const paperSize = ref('a4')
+
+const progressPercent = computed(() => {
+  if (total.value === 0) return 0
+  return Math.round((done.value / total.value) * 100)
+})
+
+let progressChartInstance = null
+let statusChartInstance = null
+
+const fetchProjects = async () => {
+  try {
+    const res = await projectApi.getAllSystem()
+    const data = res.data || res
+    projects.value = data.map(p => ({ name: p.name, id: p._id || p.id }))
+    if (projects.value.length > 0) {
+      selectedProject.value = projects.value[0].id
+      await fetchStatistics()
+    }
+  } catch (error) {
+    console.error('Error fetching projects:', error)
+  }
+}
+
+const fetchStatistics = async () => {
+  if (!selectedProject.value) return
+  try {
+    const res = await taskApi.getByProject(selectedProject.value)
+    const data = res.data || res
+
+    total.value = data.length
+    done.value = data.filter(t => t.status === 'DONE').length
+
+    const tTodo = data.filter(t => t.status === 'TO_DO').length
+    const tInProgress = data.filter(t => t.status === 'IN_PROGRESS').length
+    const tDone = done.value
+    const tCancelled = data.filter(t => t.status === 'CANCELLED').length
+
+    status.value = [
+      { name: 'To Do', count: tTodo, percent: total.value ? Math.round((tTodo / total.value) * 100) : 0 },
+      { name: 'Đang tiến hành', count: tInProgress, percent: total.value ? Math.round((tInProgress / total.value) * 100) : 0 },
+      { name: 'Hoàn thành', count: tDone, percent: total.value ? Math.round((tDone / total.value) * 100) : 0 },
+      { name: 'Đã hủy', count: tCancelled, percent: total.value ? Math.round((tCancelled / total.value) * 100) : 0 },
+    ]
+
+    const now = new Date()
+    const projName = projects.value.find(p => p.id === selectedProject.value)?.name || 'Dự án'
+
+    const lates = data.filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED' && t.deadline && new Date(t.deadline) < now)
+    lateTasks.value = lates.map(t => {
+      const days = Math.floor((now - new Date(t.deadline)) / (1000 * 60 * 60 * 24))
+      return {
+        title: t.title,
+        project: projName,
+        projectId: selectedProject.value,
+        days: days > 0 ? days : 1
+      }
+    }).sort((a,b) => b.days - a.days).slice(0, 5)
+
+    updateCharts({
+      statusChart: {
+        labels: ['To Do', 'Đang tiến hành', 'Hoàn thành', 'Đã hủy'],
+        data: [tTodo, tInProgress, tDone, tCancelled]
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching statistics:', error)
+    // Fallback to update charts with current placeholder data if API fails
+    updateCharts({})
+  }
+}
+
+const updateCharts = (data) => {
+  if (progressChartInstance) progressChartInstance.destroy()
+  if (statusChartInstance) statusChartInstance.destroy()
+
+  const progressCanvas = document.getElementById('progressChart')
+  if (progressCanvas) {
+    progressChartInstance = new Chart(progressCanvas, {
+      type: 'line',
+      data: data.progressChartData || {
+        labels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4', 'Tuần 5'],
+        datasets: [{ label: 'Tiến độ', data: [20, 35, 50, 70, 80], borderColor: '#1976d2', tension: 0.4 }]
+      }
+    })
+  }
+
+  const statusCanvas = document.getElementById('statusChart')
+  if (statusCanvas) {
+    statusChartInstance = new Chart(statusCanvas, {
+      type: 'doughnut',
+      data: {
+        labels: data.statusChart?.labels || ['To Do', 'Đang tiến hành', 'Hoàn thành', 'Đã hủy'],
+        datasets: [{
+          data: data.statusChart?.data || status.value.map(s => s.count),
+          backgroundColor: ['#9e9e9e', '#2196f3', '#4caf50', '#f44336'],
+          borderWidth: 0, spacing: 4, borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '70%',
+        plugins: { legend: { position: 'bottom', align: 'center', labels: { boxWidth: 15, padding: 15 } } }
+      }
+    })
+  }
+}
+
+const goDetail = () => {
+  if (!selectedProject.value) return
+  router.push({ name: 'ReportDetail', query: { projectId: selectedProject.value } })
+}
+
+const goToTaskReport = (projectId) => {
+  if (!projectId) return
+  router.push({ name: 'ReportDetail', query: { projectId } })
+}
+
+const exportReport = async () => {
+  if (!selectedProject.value) return
+  try {
+    let response;
+    if (exportFormat.value === 'csv') {
+      response = await reportApi.exportCsv(selectedProject.value, exportFormat.value)
+    } else {
+      // API currently only has PDF mapping, so fallback excel to pdf as well or handle later
+      response = await reportApi.exportPdf(selectedProject.value, exportFormat.value)
+    }
+
+    const url = window.URL.createObjectURL(new Blob([response.data || response]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `report-${selectedProject.value}.${exportFormat.value}`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+
+    exportDialog.value = false
+    alert('Xuất báo cáo thành công!')
+
+    // Save success history
+    const projName = projects.value.find(p => p.id === selectedProject.value)?.name || 'Dự án'
+    exportHistory.value.unshift({
+      date: new Date().toLocaleString('vi-VN'),
+      projectName: projName,
+      format: exportFormat.value.toUpperCase(),
+      status: 'Hoàn thành'
+    })
+    saveHistory()
+  } catch (err) {
+    console.error('Error exporting report:', err)
+
+    // Save failure history
+    const projName = projects.value.find(p => p.id === selectedProject.value)?.name || 'Dự án'
+    exportHistory.value.unshift({
+      date: new Date().toLocaleString('vi-VN'),
+      projectName: projName,
+      format: exportFormat.value.toUpperCase(),
+      status: 'Thất bại'
+    })
+    saveHistory()
+    alert('Xuất báo cáo thất bại!')
+  }
+}
+
+onMounted(() => {
+  fetchProjects()
+  loadHistory()
+  nextTick(() => {
+    updateCharts({})
+  })
+})
 </script>
 
 <style scoped>

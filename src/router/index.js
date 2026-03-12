@@ -85,8 +85,8 @@ const router = createRouter({
         {
           path: '/profile/edit',
           name: 'ProfileEdit',
-          component: () => import('@/views/profile/ProfileEdit.vue')
-        }
+          component: () => import('@/views/profile/ProfileEdit.vue'),
+        },
       ],
     },
 
@@ -141,6 +141,11 @@ const router = createRouter({
           path: 'reports',
           name: 'ReportManagement',
           component: () => import('@/views/admin/ReportManagement.vue'),
+        },
+        {
+          path: '/report-detail',
+          name: 'ReportDetail',
+          component: () => import('@/views/admin/ReportDetail.vue'),
         },
       ],
     },
