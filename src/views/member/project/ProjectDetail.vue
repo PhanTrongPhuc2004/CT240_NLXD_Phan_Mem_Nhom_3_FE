@@ -1047,7 +1047,7 @@ const saveTask = async () => {
   }
 
   // Xử lý các trường optional để tránh gửi chuỗi rỗng hoặc undefined
-  payload.description = payload.description || ''; // Gửi chuỗi rỗng nếu không có mô tả
+  payload.description = payload.description || null; // Gửi null nếu không có mô tả để tránh lỗi validation
   payload.assigneeId = payload.assigneeId || null;
 
   // Format deadline
