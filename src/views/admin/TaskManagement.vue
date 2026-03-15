@@ -2,14 +2,21 @@
     <v-container>
         <v-data-table
             :headers="headers"
-            :items="tasks"
+            :items="displayTasks"
             :loading="loading"
             class="elevation-1"
+            :no-data-text="activeTab === 'assigned' ? 'Bạn chưa được giao công việc nào' : 'Không có công việc nào'"
         >
             <template v-slot:top>
                 <v-toolbar flat>
                     <v-toolbar-title>Quản lý Công việc (Tasks)</v-toolbar-title>
                     <v-divider class="mx-4" inset vertical></v-divider>
+                    
+                    <v-tabs v-model="activeTab" color="primary">
+                        <v-tab value="all">Tất cả</v-tab>
+                        <v-tab value="assigned">Của tôi</v-tab>
+                    </v-tabs>
+
                     <v-spacer></v-spacer>
                     <v-dialog v-model="dialog" max-width="700px">
                         <template v-slot:activator="{ props }" v-if="canManageTasks">
@@ -117,7 +124,22 @@
 
             <!-- Custom hiển thị Status -->
             <template v-slot:item.status="{ item }">
-                <v-chip :color="getStatusColor(item.status)" size="small">
+                <v-menu v-if="canManageTasks || item.assigneeId === authStore.user?.id" location="bottom">
+                    <template v-slot:activator="{ props }">
+                        <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small" class="cursor-pointer" style="min-width: 140px; justify-content: space-between;">
+                            {{ item.status }}
+                            <v-icon end size="small">mdi-chevron-down</v-icon>
+                        </v-chip>
+                    </template>
+                    <v-list density="compact">
+                        <v-list-item v-for="status in ['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']" :key="status" :value="status" @click="handleUpdateStatus(item, status)">
+                            <v-list-item-title>
+                                <v-chip size="x-small" :color="getStatusColor(status)">{{ status }}</v-chip>
+                            </v-list-item-title>
+                        </v-list-item>
+                    </v-list>
+                </v-menu>
+                <v-chip v-else :color="getStatusColor(item.status)" size="small" style="min-width: 140px; justify-content: center;">
                     {{ item.status }}
                 </v-chip>
             </template>
@@ -181,6 +203,14 @@ const headers = [
     { title: 'Hành động', key: 'actions', sortable: false, align: 'end' },
 ]
 
+const activeTab = ref('all')
+const displayTasks = computed(() => {
+    if (activeTab.value === 'assigned') {
+        return taskStore.tasks.filter(t => t.assigneeId === authStore.user?.id)
+    }
+    return taskStore.tasks
+})
+
 const editedIndex = ref(-1)
 const defaultItem = { id: '', title: '', description: '', projectId: '', assigneeId: '', priority: 'MEDIUM', status: 'TO_DO', deadline: null }
 const editedItem = ref({ ...defaultItem })
@@ -193,8 +223,8 @@ const projectsForDropdown = computed(() => {
         if (!currentUserId) return [];
         return projects.value.filter(p => 
             p.ownerId === currentUserId ||
-            p.managerIds?.includes(currentUserId)
-            // Loại bỏ dòng memberIds: Manager hệ thống không được phép tạo task trong dự án mà họ chỉ là member thường
+            p.managerIds?.includes(currentUserId) ||
+            p.memberIds?.includes(currentUserId)
         );
     }
     return projects.value;
@@ -214,7 +244,17 @@ const projectUsers = computed(() => {
 
     // 4. Lọc danh sách user toàn hệ thống để lấy object user tương ứng
     // và loại bỏ những user có vai trò là ADMIN.
-    return users.value.filter(user => memberIds.includes(user.id) && user.role !== 'ADMIN');
+    return users.value.filter(user => {
+        if (!memberIds.includes(user.id)) return false;
+        if (user.role === 'ADMIN') return false; // Không ai được giao việc cho Admin
+        
+        // Thêm điều kiện: Manager hệ thống không được giao việc cho Manager hệ thống khác
+        if (authStore.userRole === 'MANAGER' && user.role === 'MANAGER' && user.id !== authStore.user?.id) {
+            return false;
+        }
+        
+        return true;
+    });
 });
 
 const formTitle = computed(() => {
@@ -249,6 +289,16 @@ const getPriorityColor = (priority) => {
 function goDetail(item) {
     const realItem = item.raw || item
     router.push(`/admin/tasks/${realItem.id}`)
+}
+
+const handleUpdateStatus = async (item, newStatus) => {
+    const realItem = item.raw || item
+    if (realItem.status === newStatus) return
+    try {
+        await taskStore.updateStatus(realItem.id, newStatus, '')
+    } catch (err) {
+        alert("Lỗi cập nhật trạng thái: " + (err.response?.data?.message || err.message))
+    }
 }
 
 // Khi đổi dự án, reset người được giao việc nếu người đó không thuộc dự án mới
