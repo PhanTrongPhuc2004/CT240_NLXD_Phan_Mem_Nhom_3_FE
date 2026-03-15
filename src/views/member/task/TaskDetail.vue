@@ -104,6 +104,15 @@ const canChangeStatus = computed(() => {
     if (authStore.userRole === 'ADMIN') return false
     // Manager có quyền thay đổi
     if (authStore.userRole === 'MANAGER') return true
+    
+    // Check quyền Project Owner hoặc Project Manager (nếu user chỉ là MEMBER hệ thống nhưng là Manager dự án)
+    const project = projectStore.projects.find(p => p.id === task.value?.projectId)
+    if (project) {
+        const uid = authStore.user?.id
+        if (project.ownerId === uid) return true
+        if (project.managerIds?.includes(uid)) return true
+    }
+
     // Người được giao việc (Assignee) có quyền thay đổi
     return task.value?.assigneeId === authStore.user?.id
 })

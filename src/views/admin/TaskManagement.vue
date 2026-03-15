@@ -34,7 +34,7 @@
                                         <v-col cols="12" sm="6">
                                             <v-autocomplete
                                                 v-model="editedItem.projectId"
-                                                :items="projects"
+                                                :items="projectsForDropdown"
                                                 item-title="name"
                                                 item-value="id"
                                                 label="Chọn Dự án"
@@ -130,7 +130,11 @@
             </template>
 
             <template v-slot:item.actions="{ item }">
-                <v-icon size="small" @click="goDetail(item)">mdi-eye</v-icon>
+                <v-icon size="small" class="me-2" @click="goDetail(item)">mdi-eye</v-icon>
+                <template v-if="canManageTasks">
+                    <v-icon size="small" class="me-2" @click="editItem(item)">mdi-pencil</v-icon>
+                    <v-icon size="small" color="error" @click="deleteItem(item)">mdi-delete</v-icon>
+                </template>
             </template>
         </v-data-table>
     </v-container>
@@ -181,21 +185,37 @@ const editedIndex = ref(-1)
 const defaultItem = { id: '', title: '', description: '', projectId: '', assigneeId: '', priority: 'MEDIUM', status: 'TO_DO', deadline: null }
 const editedItem = ref({ ...defaultItem })
 
+// Computed: Lọc danh sách dự án cho dropdown
+// Manager chỉ thấy các dự án họ tham gia, Admin thấy tất cả.
+const projectsForDropdown = computed(() => {
+    if (authStore.userRole === 'MANAGER') {
+        const currentUserId = authStore.user?.id;
+        if (!currentUserId) return [];
+        return projects.value.filter(p => 
+            p.ownerId === currentUserId ||
+            p.managerIds?.includes(currentUserId)
+            // Loại bỏ dòng memberIds: Manager hệ thống không được phép tạo task trong dự án mà họ chỉ là member thường
+        );
+    }
+    return projects.value;
+});
+
 // Computed: Lọc danh sách user chỉ hiển thị những người thuộc Project đã chọn
 const projectUsers = computed(() => {
-    if (!editedItem.value.projectId) return []
-    
-    // Manager (và Admin ở chế độ xem) thấy tất cả user
-    if (['ADMIN', 'MANAGER'].includes(authStore.userRole)) {
-        return users.value
-    }
+    // 1. Nếu chưa chọn dự án, trả về mảng rỗng
+    if (!editedItem.value.projectId) return [];
 
-    // Role khác chỉ thấy thành viên dự án
+    // 2. Tìm dự án đã chọn
     const project = projects.value.find(p => p.id === editedItem.value.projectId)
-    if (!project) return []
-    const memberIds = [project.ownerId, ...(project.managerIds || []), ...(project.memberIds || [])]
-    return users.value.filter(u => memberIds.includes(u.id))
-})
+    if (!project) return [];
+
+    // 3. Lấy ID của tất cả thành viên trong dự án
+    const memberIds = [project.ownerId, ...(project.managerIds || []), ...(project.memberIds || [])].filter(Boolean);
+
+    // 4. Lọc danh sách user toàn hệ thống để lấy object user tương ứng
+    // và loại bỏ những user có vai trò là ADMIN.
+    return users.value.filter(user => memberIds.includes(user.id) && user.role !== 'ADMIN');
+});
 
 const formTitle = computed(() => {
   if (editedIndex.value === -1) return 'Thêm công việc mới'
@@ -281,7 +301,7 @@ async function save() {
 
     // 2. Format Data
     if (editedIndex.value === -1) delete payload.id
-    payload.description = payload.description || null
+    payload.description = payload.description || '' // Gửi chuỗi rỗng thay vì null để tránh lỗi 400
     payload.assigneeId = payload.assigneeId || null
     payload.deadline = payload.deadline ? (payload.deadline.length === 16 ? payload.deadline + ':00' : payload.deadline) : null
 
@@ -304,20 +324,23 @@ async function save() {
     // 4. Create/Update Task
     try {
         if (editedIndex.value > -1) {
-            await taskStore.update(payload.id, payload)
-            const original = tasks.value[editedIndex.value]
-            if (original.status !== payload.status) {
-                await taskStore.updateStatus(payload.id, payload.status, null)
-            }
+            await taskStore.update(payload.id, payload) // Gộp update, không cần gọi updateStatus riêng
         } else {
             await taskStore.create(payload)
         }
         close()
     } catch (error) {
         console.error('Save task error:', error)
-        const msg = error.response?.status === 403 
-            ? 'Bạn không có quyền thực hiện hành động này.' 
-            : (error.response?.data?.message || error.response?.data || 'Lỗi lưu dữ liệu')
+        let msg = 'Lỗi lưu dữ liệu'
+        if (error.response) {
+            if (error.response.status === 403) {
+                msg = 'Bạn không có quyền thực hiện hành động này.'
+            } else if (error.response.data) {
+                const data = error.response.data
+                // Nếu backend trả về object (ví dụ validation errors), hiển thị chi tiết hoặc stringify để đọc được lỗi
+                msg = (typeof data === 'object') ? (data.message || JSON.stringify(data)) : data
+            }
+        }
         alert('Lưu thất bại: ' + msg)
     }
 }

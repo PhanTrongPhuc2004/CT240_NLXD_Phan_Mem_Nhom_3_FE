@@ -10,9 +10,7 @@
             no-data-text="Bạn chưa được giao công việc nào"
         >
             <template v-slot:item.title="{ item }">
-                <a href="#" @click.prevent="goDetail(item)" class="text-decoration-none font-weight-bold text-primary">
-                    {{ item.title }}
-                </a>
+                {{ item.title }}
             </template>
 
             <template v-slot:item.projectId="{ item }">
@@ -45,6 +43,10 @@
 
             <template v-slot:item.deadline="{ item }">
                 {{ item.deadline ? new Date(item.deadline).toLocaleDateString('vi-VN') : '' }}
+            </template>
+
+            <template v-slot:item.actions="{ item }">
+                <v-icon size="small" @click="goDetail(item)">mdi-eye</v-icon>
             </template>
         </v-data-table>
     </v-container>
@@ -92,6 +94,7 @@ const headers = [
     { title: 'Ưu tiên', key: 'priority' },
     { title: 'Trạng thái', key: 'status', width: '180px' },
     { title: 'Hạn chót', key: 'deadline' },
+    { title: 'Hành động', key: 'actions', sortable: false, align: 'end' },
 ]
 
 const getStatusColor = (status) => {

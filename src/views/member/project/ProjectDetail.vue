@@ -234,7 +234,11 @@
                 </template>
 
                 <template v-slot:item.actions="{ item }">
-                  <v-icon size="small" @click="goToTaskDetail(item)">mdi-eye</v-icon>
+                  <v-icon size="small" class="me-2" @click="goToTaskDetail(item)">mdi-eye</v-icon>
+                  <template v-if="canManageTasks">
+                    <v-icon size="small" class="me-2" @click="openTaskDialog(item)">mdi-pencil</v-icon>
+                    <v-icon size="small" color="error" @click="deleteTaskItem(item)">mdi-delete</v-icon>
+                  </template>
                 </template>
               </v-data-table>
             </v-card>
