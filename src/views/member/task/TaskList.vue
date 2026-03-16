@@ -115,7 +115,14 @@ const handleUpdateStatus = async (item, newStatus) => {
     if (realItem.status === newStatus) return
     // Nếu chuyển sang CANCELLED hoặc DONE, có thể cần confirm hoặc nhập lý do (tạm thời để null)
     // Backend yêu cầu: updateStatus(id, status, cancelReason)
-    await taskStore.updateStatus(realItem.id, newStatus, '')
+    try {
+        await taskStore.updateStatus(realItem.id, newStatus, '')
+    } catch (err) {
+        const msg = err.response?.status === 403 
+            ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
+            : (err.response?.data?.message || err.message)
+        alert("Lỗi cập nhật trạng thái: " + msg)
+    }
 }
 
 onMounted(() => {

@@ -297,7 +297,10 @@ const handleUpdateStatus = async (item, newStatus) => {
     try {
         await taskStore.updateStatus(realItem.id, newStatus, '')
     } catch (err) {
-        alert("Lỗi cập nhật trạng thái: " + (err.response?.data?.message || err.message))
+        const msg = err.response?.status === 403 
+            ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
+            : (err.response?.data?.message || err.message)
+        alert("Lỗi cập nhật trạng thái: " + msg)
     }
 }
 

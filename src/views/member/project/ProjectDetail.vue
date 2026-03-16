@@ -1087,7 +1087,7 @@ const updateTaskStatus = async (task, newStatus) => {
   } catch (err) {
     realTask.status = oldStatus; // Hoàn tác đúng vào object reactive (realTask) thay vì task (slot scope)
     const msg = err.response?.status === 403 
-      ? "Backend từ chối quyền này (Bạn cần quyền Manager/Assignee)." 
+      ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
       : (err.response?.data?.message || err.message);
     alert("Lỗi cập nhật trạng thái: " + msg);
   }

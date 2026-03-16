@@ -155,7 +155,10 @@ const updateStatus = async (newStatus) => {
         // Load lại chi tiết để cập nhật giao diện
         await taskStore.getDetail(task.value.id)
     } catch (error) {
-        alert('Lỗi cập nhật trạng thái: ' + (error.response?.data?.message || error.message))
+        const msg = error.response?.status === 403 
+            ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
+            : (error.response?.data?.message || error.message)
+        alert('Lỗi cập nhật trạng thái: ' + msg)
     }
 }
 
