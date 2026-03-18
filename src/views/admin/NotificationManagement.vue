@@ -89,7 +89,6 @@ const getUserId = () => {
 
 const userId = getUserId();
 
-// Tự động tải dữ liệu khi Manager vào trang
 onMounted(() => {
   if (userId) {
     store.fetchAll(userId);
