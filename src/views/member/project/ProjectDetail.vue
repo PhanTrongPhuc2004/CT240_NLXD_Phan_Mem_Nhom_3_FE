@@ -115,7 +115,7 @@
       <!-- Tabs Navigation -->
       <v-tabs v-model="activeTab" color="primary" bg-color="white" class="border-b px-6">
         <v-tab value="overview">Tổng quan</v-tab>
-        <v-tab value="tasks" v-if="canViewTab">Công việc</v-tab>
+        <v-tab value="tasks" v-if="canViewTab && !isAdmin">Công việc</v-tab>
         <v-tab value="members">Thành viên</v-tab>
         <v-tab value="settings" v-if="canEditProject">Cài đặt</v-tab>
       </v-tabs>
@@ -161,7 +161,7 @@
           </v-window-item>
 
           <!-- TAB 2: CÔNG VIỆC (TASKS) -->
-          <v-window-item value="tasks" v-if="canViewTab">
+          <v-window-item value="tasks" v-if="canViewTab && !isAdmin">
             <v-card class="pa-4" elevation="1">
               <div class="d-flex justify-space-between align-center mb-4">
                 <h3 class="text-h6">Danh sách công việc ({{ projectTasks.length }})</h3>
@@ -712,16 +712,16 @@ const getInitials = (name) => {
 };
 
 const backButtonLabel = computed(() => {
-  if (isAdmin.value) return 'Quay lại trang Quản lý';
   if (route.name === 'MyProjectDetail') return 'Quay lại Dự án của tôi';
+  if (isAdmin.value || isSystemManager.value) return 'Quay lại trang Quản lý';
   return 'Quay lại Danh sách';
 });
 
 const goBack = () => {
-  if (isAdmin.value) {
-    router.push('/admin/projects');
-  } else if (route.name === 'MyProjectDetail') {
+  if (route.name === 'MyProjectDetail') {
     router.push({ name: 'MyProjects' });
+  } else if (isAdmin.value || isSystemManager.value) {
+    router.push('/admin/projects');
   } else {
     router.push({ name: 'MemberProjects' });
   }
