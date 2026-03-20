@@ -6,7 +6,7 @@
         <div class="d-flex align-center">
           <h1 class="text-h4 font-weight-bold">Quản lý Dự án Toàn hệ thống</h1>
           <v-spacer></v-spacer>
-          <v-btn v-if="canCreate" color="primary" @click="goToCreateProject">Tạo dự án mới</v-btn>
+          <v-btn v-if="canCreate" class="primary-gradient-btn pulse-primary font-weight-bold px-6" rounded="pill" prepend-icon="mdi-plus" @click="goToCreateProject">Tạo dự án mới</v-btn>
         </div>
         <p class="mt-2 text-grey">Xem và quản lý tất cả các dự án đang hoạt động trong hệ thống.</p>
       </v-col>
@@ -19,7 +19,18 @@
         items-per-page-text="Số dự án mỗi trang">
         <!-- Tùy chỉnh cột Tên dự án -->
         <template v-slot:item.name="{ item }">
-          <div class="font-weight-bold">{{ item.name }}</div>
+          <div class="d-flex align-center">
+            <span class="font-weight-bold mr-2">{{ item.name }}</span>
+            <v-chip
+              v-if="isProjectParticipant(item)"
+              color="primary"
+              size="x-small"
+              variant="tonal"
+              class="font-weight-bold"
+            >
+              Đã tham gia
+            </v-chip>
+          </div>
         </template>
 
         <!-- Tùy chỉnh cột Chủ sở hữu (Hiển thị Tên thay vì ID) -->
@@ -44,9 +55,14 @@
 
         <!-- Cột Hành động -->
         <template v-slot:item.actions="{ item }">
-          <v-icon small class="me-2" @click="viewProject(item)">mdi-eye</v-icon>
-          <v-icon small class="me-2" @click="editProject(item)">mdi-pencil</v-icon>
-          <v-icon small color="error" @click="confirmDelete(item)" v-if="canDeleteProject(item)">mdi-delete</v-icon>
+          <template v-if="authStore.userRole === 'ADMIN'">
+            <v-icon small class="me-2" @click="viewProject(item)" title="Xem chi tiết">mdi-eye</v-icon>
+            <v-icon small class="me-2" @click="editProject(item)" title="Chỉnh sửa">mdi-pencil</v-icon>
+            <v-icon small color="error" @click="confirmDelete(item)" title="Xóa">mdi-delete</v-icon>
+          </template>
+          <template v-else>
+            <v-btn size="small" class="primary-gradient-btn pulse-primary font-weight-bold px-4" rounded="pill" @click="viewProject(item)">Xem dự án</v-btn>
+          </template>
         </template>
       </v-data-table>
     </v-card>
@@ -59,8 +75,8 @@
           viễn.</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue-darken-1" variant="text" @click="closeDelete">Hủy</v-btn>
-          <v-btn color="red-darken-1" variant="text" @click="deleteProjectConfirm">Xóa</v-btn>
+          <v-btn color="grey-darken-1" variant="text" class="font-weight-bold" rounded="pill" @click="closeDelete">Hủy</v-btn>
+          <v-btn class="danger-gradient-btn pulse-danger font-weight-bold px-6" rounded="pill" @click="deleteProjectConfirm">Xóa</v-btn>
           <v-spacer></v-spacer>
         </v-card-actions>
       </v-card>
@@ -95,6 +111,14 @@ const canCreate = computed(() => authStore.userRole === 'ADMIN');
 const canDeleteProject = (item) => {
   // Chỉ Admin mới có quyền xóa dự án từ trang quản lý
   return authStore.userRole === 'ADMIN';
+};
+
+// Kiểm tra xem người dùng hiện tại có tham gia dự án hay không
+const isProjectParticipant = (project) => {
+  if (!project) return false;
+  const currentUserId = authStore.user?.id;
+  if (!currentUserId) return false;
+  return project.ownerId === currentUserId || project.memberIds?.includes(currentUserId);
 };
 
 // Dialog xác nhận xóa
@@ -161,3 +185,39 @@ const deleteProjectConfirm = async () => {
   }
 };
 </script>
+
+<style scoped>
+.primary-gradient-btn {
+  background: linear-gradient(45deg, #1976D2, #42A5F5) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.danger-gradient-btn {
+  background: linear-gradient(45deg, #E53935, #EF5350) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+@keyframes pulse-primary {
+  0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0); }
+}
+
+.pulse-primary {
+  animation: pulse-primary 2s infinite;
+}
+
+@keyframes pulse-danger {
+  0% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(229, 57, 53, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+}
+
+.pulse-danger {
+  animation: pulse-danger 2s infinite;
+}
+</style>

@@ -81,24 +81,24 @@
 
       <!-- TRƯỜNG HỢP 1: LÀ CHỦ SỞ HỮU -->
       <template v-if="isOwner">
-        <v-btn icon="mdi-cog-outline" variant="text" size="small" color="grey-darken-1" @click.stop="goToDetail" title="Quản lý"></v-btn>
-        <v-btn icon="mdi-delete-outline" variant="text" size="small" color="error" @click.stop="handleDelete" title="Xóa dự án"></v-btn>
+        <v-btn class="manage-btn pulse-manage font-weight-bold px-4" rounded="pill" size="small" @click.stop="goToDetail" prepend-icon="mdi-cog">Quản lý</v-btn>
+        <v-btn class="leave-btn pulse-danger font-weight-bold px-4" rounded="pill" size="small" @click.stop="handleDelete" prepend-icon="mdi-delete">Xóa</v-btn>
       </template>
 
       <!-- TRƯỜNG HỢP 2: LÀ THÀNH VIÊN (KHÔNG PHẢI OWNER) -->
       <template v-else-if="isMember">
-        <v-btn variant="text" size="small" color="primary" @click.stop="goToDetail">Vào dự án</v-btn>
-        <v-btn variant="text" size="small" color="error" :loading="loading" @click.stop="handleLeave">Rời đi</v-btn>
+        <v-btn class="enter-btn pulse-primary font-weight-bold px-3" rounded="pill" size="small" @click.stop="goToDetail" prepend-icon="mdi-arrow-right-circle">Vào</v-btn>
+        <v-btn class="leave-btn pulse-danger font-weight-bold px-3 ms-1" rounded="pill" size="small" :loading="loading" @click.stop="handleLeave" prepend-icon="mdi-logout">Rời đi</v-btn>
       </template>
 
       <!-- TRƯỜNG HỢP 3: ĐANG CHỜ DUYỆT -->
       <template v-else-if="isPending">
-        <v-btn block variant="tonal" size="small" color="warning" :loading="loading" @click.stop="handleCancelRequest">Hủy yêu cầu</v-btn>
+        <v-btn class="cancel-btn pulse-warning font-weight-bold px-4" rounded="pill" size="small" :loading="loading" @click.stop="handleCancelRequest" prepend-icon="mdi-close-circle">Hủy yêu cầu</v-btn>
       </template>
 
       <!-- TRƯỜNG HỢP 4: CHƯA THAM GIA -->
       <template v-else>
-        <v-btn block variant="flat" size="small" color="primary" :loading="loading" @click.stop="handleJoin">Tham gia</v-btn>
+        <v-btn class="join-btn pulse-primary font-weight-bold px-4" rounded="pill" size="small" :loading="loading" @click.stop="handleJoin" prepend-icon="mdi-hand-wave">Tham gia</v-btn>
       </template>
     </v-card-actions>
   </v-card>
@@ -248,5 +248,80 @@ const handleCancelRequest = async () => {
 .stacked-avatar {
     border: 2px solid #ffffff;
     margin-left: -8px;
+}
+
+.join-btn {
+  background: linear-gradient(45deg, #1976D2, #42A5F5) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.cancel-btn {
+  background: linear-gradient(45deg, #F57C00, #FFB74D) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.enter-btn {
+  background: linear-gradient(45deg, #1976D2, #42A5F5) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.leave-btn {
+  background: linear-gradient(45deg, #E53935, #EF5350) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.manage-btn {
+  background: linear-gradient(45deg, #8E24AA, #BA68C8) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+@keyframes pulse-primary {
+  0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0); }
+}
+
+.pulse-primary {
+  animation: pulse-primary 2s infinite;
+}
+
+@keyframes pulse-warning {
+  0% { box-shadow: 0 0 0 0 rgba(245, 124, 0, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(245, 124, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 124, 0, 0); }
+}
+
+.pulse-warning {
+  animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-danger {
+  0% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(229, 57, 53, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+}
+
+.pulse-danger {
+  animation: pulse-danger 2s infinite;
+}
+
+@keyframes pulse-manage {
+  0% { box-shadow: 0 0 0 0 rgba(142, 36, 170, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(142, 36, 170, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(142, 36, 170, 0); }
+}
+
+.pulse-manage {
+  animation: pulse-manage 2s infinite;
 }
 </style>

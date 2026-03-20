@@ -6,7 +6,7 @@
       </v-col>
 
       <v-col cols="6" class="d-flex justify-end">
-        <v-btn color="#111111" @click="goDetail"> Xem báo cáo chi tiết </v-btn>
+        <v-btn class="dark-gradient-btn pulse-dark font-weight-bold px-4" rounded="pill" prepend-icon="mdi-chart-box" @click="goDetail"> Xem báo cáo chi tiết </v-btn>
       </v-col>
     </v-row>
     <!-- Bộ lọc -->
@@ -25,8 +25,8 @@
         </v-col>
 
         <v-col cols="3" class="d-flex justify-center align-center ga-2">
-          <v-btn color="primary" @click="fetchStatistics">Áp dụng</v-btn>
-          <v-btn color="green" @click="exportDialog = true"> Xuất báo cáo </v-btn>
+          <v-btn class="primary-gradient-btn pulse-primary font-weight-bold px-4" rounded="pill" @click="fetchStatistics">Áp dụng</v-btn>
+          <v-btn class="success-gradient-btn pulse-success font-weight-bold px-4" rounded="pill" prepend-icon="mdi-file-export" @click="exportDialog = true"> Xuất báo cáo </v-btn>
         </v-col>
       </v-row>
     </v-card>
@@ -146,7 +146,7 @@
 
               <!-- button -->
               <template v-slot:append>
-                <v-btn variant="outlined" size="small" class="text-none btn-view" @click="goToTaskReport(task.projectId)"> Xem </v-btn>
+                <v-btn variant="outlined" size="small" class="text-none btn-view font-weight-bold" rounded="pill" @click="goToTaskReport(task.projectId)"> Xem </v-btn>
               </template>
             </v-list-item>
 
@@ -196,7 +196,7 @@
 
               <v-row no-gutters class="mb-8">
                 <v-col cols="12" class="d-flex justify-center">
-                  <v-btn block color="primary"> Áp dụng </v-btn>
+                  <v-btn block class="primary-gradient-btn pulse-primary font-weight-bold" rounded="pill"> Áp dụng </v-btn>
                 </v-col>
               </v-row>
 
@@ -310,11 +310,11 @@
                 <!-- Buttons -->
                 <v-row class="mt-0">
                   <v-col cols="6">
-                    <v-btn block color="primary"> Lưu lịch </v-btn>
+                    <v-btn block class="primary-gradient-btn pulse-primary font-weight-bold" rounded="pill"> Lưu lịch </v-btn>
                   </v-col>
 
                   <v-col cols="6">
-                    <v-btn block variant="outlined"> Hủy lịch </v-btn>
+                    <v-btn block variant="outlined" class="font-weight-bold" rounded="pill"> Hủy lịch </v-btn>
                   </v-col>
                 </v-row>
               </v-row>
@@ -367,9 +367,9 @@
         <v-card-actions>
           <v-spacer></v-spacer>
 
-          <v-btn variant="text" @click="exportDialog = false"> Hủy </v-btn>
+          <v-btn variant="text" color="grey-darken-1" class="font-weight-bold" rounded="pill" @click="exportDialog = false"> Hủy </v-btn>
 
-          <v-btn color="primary" @click="exportReport"> Xuất báo cáo </v-btn>
+          <v-btn class="primary-gradient-btn pulse-primary font-weight-bold px-6" rounded="pill" @click="exportReport"> Xuất báo cáo </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -676,5 +676,63 @@ h3 {
 .sub-text {
   font-size: 12px;
   color: #777;
+}
+
+.primary-gradient-btn {
+  background: linear-gradient(45deg, #1976D2, #42A5F5) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.danger-gradient-btn {
+  background: linear-gradient(45deg, #E53935, #EF5350) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.success-gradient-btn {
+  background: linear-gradient(45deg, #2E7D32, #66BB6A) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.dark-gradient-btn {
+  background: linear-gradient(45deg, #212121, #424242) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+@keyframes pulse-primary {
+  0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0); }
+}
+
+.pulse-primary {
+  animation: pulse-primary 2s infinite;
+}
+
+@keyframes pulse-success {
+  0% { box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(46, 125, 50, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 125, 50, 0); }
+}
+
+.pulse-success {
+  animation: pulse-success 2s infinite;
+}
+
+@keyframes pulse-dark {
+  0% { box-shadow: 0 0 0 0 rgba(33, 33, 33, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(33, 33, 33, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(33, 33, 33, 0); }
+}
+
+.pulse-dark {
+  animation: pulse-dark 2s infinite;
 }
 </style>

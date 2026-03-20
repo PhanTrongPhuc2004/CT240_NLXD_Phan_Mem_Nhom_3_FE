@@ -1,24 +1,26 @@
 <template>
-  <v-container fluid>
-    <h2 class="text-h5 font-weight-bold mb-6">Dự án tôi tham gia</h2>
-    
-    <v-row v-if="loading">
-      <v-col cols="12" class="text-center">
-        <v-progress-circular indeterminate color="primary"></v-progress-circular>
-      </v-col>
+  <v-container>
+    <v-toolbar flat color="transparent">
+      <v-toolbar-title class="text-h5 font-weight-bold">
+        Dự án tôi tham gia
+      </v-toolbar-title>
+    </v-toolbar>
+
+    <v-row v-if="loading" justify="center" class="mt-10">
+      <v-progress-circular indeterminate color="primary"></v-progress-circular>
     </v-row>
 
-    <v-row v-else-if="myProjects.length > 0">
-      <v-col v-for="project in myProjects" :key="project.id" cols="12" sm="6" md="4" lg="3">
-        <ProjectCard :project="project" />
+    <v-row v-else-if="myProjects.length === 0" justify="center" class="mt-10">
+      <v-col cols="12" class="text-center">
+        <v-icon size="64" color="grey-lighten-1">mdi-folder-account-outline</v-icon>
+        <p class="text-grey mt-2">Bạn chưa tham gia dự án nào. Hãy khám phá và tham gia các dự án!</p>
+        <v-btn class="primary-gradient-btn pulse-primary font-weight-bold px-6 mt-4" rounded="pill" to="/projects">Khám phá dự án</v-btn>
       </v-col>
     </v-row>
 
     <v-row v-else>
-      <v-col cols="12" class="text-center">
-        <v-icon size="64" color="grey-lighten-2" class="mb-4">mdi-folder-search-outline</v-icon>
-        <p class="text-grey text-h6">Bạn chưa tham gia dự án nào.</p>
-        <v-btn color="primary" to="/projects" class="mt-4" variant="flat">Khám phá dự án công khai</v-btn>
+      <v-col v-for="project in myProjects" :key="project.id" cols="12" sm="6" md="4">
+        <ProjectCard :project="project" />
       </v-col>
     </v-row>
   </v-container>
@@ -50,3 +52,22 @@ onMounted(() => {
   projectStore.fetchAll();
 });
 </script>
+
+<style scoped>
+.primary-gradient-btn {
+  background: linear-gradient(45deg, #1976D2, #42A5F5) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+@keyframes pulse-primary {
+  0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0); }
+}
+
+.pulse-primary {
+  animation: pulse-primary 2s infinite;
+}
+</style>

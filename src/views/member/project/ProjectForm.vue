@@ -6,7 +6,7 @@
         <!-- Header -->
         <div class="d-flex align-center justify-space-between mb-8">
           <h1 class="text-h4 font-weight-bold">Tạo dự án mới</h1>
-          <v-btn color="grey" variant="text" @click="router.back()" :disabled="loading">
+          <v-btn color="grey-darken-1" variant="text" class="font-weight-bold" rounded="pill" @click="router.back()" :disabled="loading">
             Hủy
           </v-btn>
         </div>
@@ -56,7 +56,7 @@
 
                 <!-- Nút tạo dự án -->
                 <div class="d-flex justify-end mt-8">
-                  <v-btn color="primary" size="large" class="px-10" :loading="loading" type="submit">
+                  <v-btn size="large" class="primary-gradient-btn pulse-primary font-weight-bold px-10" rounded="pill" :loading="loading" type="submit">
                     Tạo dự án
                   </v-btn>
                 </div>
@@ -93,7 +93,7 @@
 
               <!-- Nút tạo dự án ở cuối tab -->
               <div class="d-flex justify-end mt-8">
-                <v-btn color="primary" size="large" class="px-10" :loading="loading" @click="handleSubmit">
+                <v-btn size="large" class="primary-gradient-btn pulse-primary font-weight-bold px-10" rounded="pill" :loading="loading" @click="handleSubmit">
                   Tạo dự án
                 </v-btn>
               </div>
@@ -206,3 +206,22 @@ const handleSubmit = async () => {
   }
 };
 </script>
+
+<style scoped>
+.primary-gradient-btn {
+  background: linear-gradient(45deg, #1976D2, #42A5F5) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+@keyframes pulse-primary {
+  0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0); }
+}
+
+.pulse-primary {
+  animation: pulse-primary 2s infinite;
+}
+</style>

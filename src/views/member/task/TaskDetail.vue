@@ -1,6 +1,6 @@
 <template>
     <v-container>
-        <v-btn color="grey" variant="text" class="mb-4" @click="$router.back()">
+        <v-btn color="grey-darken-1" variant="text" class="mb-4 font-weight-bold" rounded="pill" @click="$router.back()">
             <v-icon start>mdi-arrow-left</v-icon> Quay lại
         </v-btn>
 

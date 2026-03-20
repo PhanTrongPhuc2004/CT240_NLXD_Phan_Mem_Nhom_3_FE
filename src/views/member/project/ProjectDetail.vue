@@ -11,7 +11,7 @@
         <v-icon size="80" color="grey-lighten-2" class="mb-4">mdi-alert-circle-outline</v-icon>
         <h2 class="text-h5 font-weight-bold text-grey-darken-3 mb-2">Không tìm thấy dự án</h2>
         <p class="text-body-1 text-grey mb-6">{{ error }}</p>
-        <v-btn color="primary" variant="flat" size="large" @click="goBack">
+        <v-btn class="primary-gradient-btn pulse-primary font-weight-bold px-6" rounded="pill" size="large" @click="goBack">
           Quay lại danh sách
         </v-btn>
       </v-col>
@@ -24,7 +24,7 @@
         <div class="d-flex align-center justify-space-between">
           <div>
             <!-- Nút Quay lại thông minh -->
-            <v-btn variant="text" prepend-icon="mdi-arrow-left" class="mb-2 px-0" color="grey-darken-2" @click="goBack">
+            <v-btn variant="text" prepend-icon="mdi-arrow-left" class="mb-2 px-4 font-weight-bold" rounded="pill" color="grey-darken-2" @click="goBack">
               {{ backButtonLabel }}
             </v-btn>
 
@@ -49,20 +49,24 @@
               @click="activeTab = 'settings'">
               Cài đặt
             </v-btn> -->
-            <v-btn v-if="isMember && !isOwner" prepend-icon="mdi-logout" variant="outlined"
-              color="error" @click="handleLeaveProject">
+            <v-btn v-if="isMember && !isOwner" prepend-icon="mdi-logout" class="leave-btn pulse-danger font-weight-bold"
+              rounded="pill" @click="handleLeaveProject">
               Rời dự án
             </v-btn>
             <!-- Nút Hủy yêu cầu cho người đang chờ duyệt -->
-            <v-btn v-if="isPending" prepend-icon="mdi-close-circle" variant="outlined" color="warning"
+            <v-btn v-if="isPending" prepend-icon="mdi-close-circle" class="cancel-btn pulse-warning font-weight-bold" rounded="pill"
               @click="handleCancelRequest">
               Hủy yêu cầu
             </v-btn>
             <!-- Nút Xin tham gia cho người chưa tham gia -->
             <!-- Manager hệ thống nếu chưa tham gia thì vẫn hiện nút xin tham gia để lấy quyền chỉnh sửa -->
-            <v-btn v-if="!isMember && !isOwner && !isPending && !isAdmin" prepend-icon="mdi-login"
-              variant="elevated" color="primary" @click="handleJoinProject">
-              Xin tham gia
+            <v-btn v-if="!isMember && !isOwner && !isPending && !isAdmin" 
+              prepend-icon="mdi-hand-wave"
+              class="join-btn pulse-primary font-weight-bold"
+              size="large"
+              rounded="pill"
+              @click="handleJoinProject">
+              Xin tham gia dự án
             </v-btn>
           </div>
         </div>
@@ -116,7 +120,7 @@
       <v-tabs v-model="activeTab" color="primary" bg-color="white" class="border-b px-6">
         <v-tab value="overview">Tổng quan</v-tab>
         <v-tab value="tasks" v-if="canViewTab && !isAdmin">Công việc</v-tab>
-        <v-tab value="members">Thành viên</v-tab>
+        <v-tab value="members" v-if="canViewTab">Thành viên</v-tab>
         <v-tab value="settings" v-if="canEditProject">Cài đặt</v-tab>
       </v-tabs>
 
@@ -141,26 +145,32 @@
               <v-col cols="12" md="4">
                 <v-card class="pa-4 h-100" elevation="1">
                   <v-card-title>Hoạt động gần đây</v-card-title>
-                  <v-list lines="two" v-if="recentActivities.length > 0">
-                    <v-list-item v-for="activity in recentActivities" :key="activity.id" class="mb-2">
-                      <template v-slot:prepend>
-                        <v-avatar :color="`${activity.color}-lighten-4`" size="32" class="mr-3">
-                          <v-icon size="16" :color="activity.color">{{ activity.icon }}</v-icon>
-                        </v-avatar>
-                      </template>
-                      <v-list-item-title class="text-body-2 font-weight-bold">{{ activity.title }}</v-list-item-title>
-                      <v-list-item-subtitle class="text-caption d-flex flex-column mt-1">
-                        <span class="text-truncate mb-1" style="max-width: 250px;">{{ activity.subtitle }}</span>
-                        <span class="text-grey d-flex align-center">
-                          <v-icon size="12" class="mr-1">mdi-clock-outline</v-icon>
-                          {{ activity.date.toLocaleString('vi-VN') }}
-                        </span>
-                      </v-list-item-subtitle>
-                    </v-list-item>
-                  </v-list>
-                  <div v-else class="text-center py-8">
-                    <v-icon size="48" color="grey-lighten-2">mdi-history</v-icon>
-                    <div class="text-grey mt-2">Chưa có hoạt động nào</div>
+                  <template v-if="canViewTab">
+                    <v-list lines="two" v-if="recentActivities.length > 0">
+                      <v-list-item v-for="activity in recentActivities" :key="activity.id" class="mb-2">
+                        <template v-slot:prepend>
+                          <v-avatar :color="`${activity.color}-lighten-4`" size="32" class="mr-3">
+                            <v-icon size="16" :color="activity.color">{{ activity.icon }}</v-icon>
+                          </v-avatar>
+                        </template>
+                        <v-list-item-title class="text-body-2 font-weight-bold">{{ activity.title }}</v-list-item-title>
+                        <v-list-item-subtitle class="text-caption d-flex flex-column mt-1">
+                          <span class="text-truncate mb-1" style="max-width: 250px;">{{ activity.subtitle }}</span>
+                          <span class="text-grey d-flex align-center">
+                            <v-icon size="12" class="mr-1">mdi-clock-outline</v-icon>
+                            {{ activity.date.toLocaleString('vi-VN') }}
+                          </span>
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                    </v-list>
+                    <div v-else class="text-center py-8">
+                      <v-icon size="48" color="grey-lighten-2">mdi-history</v-icon>
+                      <div class="text-grey mt-2">Chưa có hoạt động nào</div>
+                    </div>
+                  </template>
+                  <div v-else class="text-center py-8 px-4">
+                    <v-icon size="48" color="grey-lighten-2">mdi-lock-outline</v-icon>
+                    <div class="text-grey mt-2">Chỉ thành viên dự án mới được xem</div>
                   </div>
                 </v-card>
               </v-col>
@@ -172,7 +182,7 @@
             <v-card class="pa-4" elevation="1">
               <div class="d-flex justify-space-between align-center mb-4">
                 <h3 class="text-h6">Danh sách công việc ({{ projectTasks.length }})</h3>
-                <v-btn v-if="canManageTasks" color="primary" prepend-icon="mdi-plus" @click="openTaskDialog()">
+                <v-btn v-if="canManageTasks" class="primary-gradient-btn pulse-primary font-weight-bold px-4" rounded="pill" prepend-icon="mdi-plus" @click="openTaskDialog()">
                   Thêm công việc
                 </v-btn>
               </div>
@@ -255,7 +265,7 @@
           </v-window-item>
 
           <!-- TAB 3: THÀNH VIÊN -->
-          <v-window-item value="members">
+          <v-window-item value="members" v-if="canViewTab">
             <!-- SECTION: YÊU CẦU THAM GIA (Chỉ hiện cho Owner và Admin/Manager hệ thống) -->
             <v-card v-if="canEditProject && project?.pendingMemberIds?.length > 0"
               class="pa-4 mb-6 border-warning" elevation="1" variant="outlined" color="orange-lighten-5">
@@ -273,10 +283,10 @@
 
                   <template v-slot:append>
                     <div class="d-flex gap-2">
-                      <v-btn size="small" color="success" prepend-icon="mdi-check" @click="approveJoin(userId)">
+                      <v-btn size="small" class="success-gradient-btn pulse-success font-weight-bold px-3" rounded="pill" prepend-icon="mdi-check" @click="approveJoin(userId)">
                         Duyệt
                       </v-btn>
-                      <v-btn size="small" color="error" variant="outlined" prepend-icon="mdi-close"
+                      <v-btn size="small" class="danger-gradient-btn pulse-danger font-weight-bold px-3" rounded="pill" prepend-icon="mdi-close"
                         @click="rejectJoin(userId)">
                         Từ chối
                       </v-btn>
@@ -290,7 +300,7 @@
             <v-card class="pa-4" elevation="1">
               <div class="d-flex justify-space-between align-center mb-4">
                 <h3 class="text-h6">Thành viên dự án ({{ project?.memberIds?.length || 0 }})</h3>
-                <v-btn v-if="canEditProject" color="primary" prepend-icon="mdi-account-plus"
+                <v-btn v-if="canEditProject" class="primary-gradient-btn pulse-primary font-weight-bold px-4" rounded="pill" prepend-icon="mdi-account-plus"
                   @click="dialogAddMember = true">
                   Thêm thành viên
                 </v-btn>
@@ -362,7 +372,7 @@
                 </div>
 
                 <div class="d-flex justify-end">
-                  <v-btn color="primary" type="submit" :loading="updating">Lưu thay đổi</v-btn>
+                  <v-btn class="primary-gradient-btn pulse-primary font-weight-bold px-6" rounded="pill" type="submit" :loading="updating">Lưu thay đổi</v-btn>
                 </div>
               </v-form>
 
@@ -376,7 +386,7 @@
                     <div class="font-weight-bold text-error">Xóa dự án này</div>
                     <div class="text-caption">Hành động này không thể hoàn tác. Tất cả dữ liệu sẽ bị mất.</div>
                   </div>
-                  <v-btn color="error" variant="elevated" @click="deleteProject">Xóa dự án</v-btn>
+                  <v-btn class="danger-gradient-btn pulse-danger font-weight-bold px-4" rounded="pill" @click="deleteProject">Xóa dự án</v-btn>
                 </div>
               </div>
             </v-card>
@@ -445,8 +455,8 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="closeTaskDialog">{{ canManageTasks ? 'Hủy' : 'Đóng' }}</v-btn>
-          <v-btn v-if="canManageTasks" color="primary" variant="text" @click="saveTask">Lưu</v-btn>
+          <v-btn color="grey-darken-1" variant="text" class="font-weight-bold" rounded="pill" @click="closeTaskDialog">{{ canManageTasks ? 'Hủy' : 'Đóng' }}</v-btn>
+          <v-btn v-if="canManageTasks" class="primary-gradient-btn pulse-primary font-weight-bold px-6" rounded="pill" variant="text" @click="saveTask">Lưu</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -456,10 +466,11 @@
       <v-card>
         <v-card-title>Thêm thành viên vào dự án</v-card-title>
         <v-card-text>
-          <v-autocomplete v-model="newMemberId" :items="searchResults" :loading="searching" item-title="fullName"
+          <v-autocomplete v-model="selectedNewMembers" v-model:search="searchQuery" :items="searchResults" :loading="searching" item-title="fullName"
             item-value="id" label="Tìm kiếm thành viên" placeholder="Nhập tên hoặc email..." variant="outlined"
             prepend-inner-icon="mdi-magnify" return-object @update:search="onSearchUser" no-filter hide-no-data
-            hide-selected clearable>
+            hide-selected clearable multiple chips closable-chips
+            @update:model-value="onSelectionChange">
             <template v-slot:item="{ props, item }">
               <v-list-item v-bind="props" :subtitle="item.raw.email">
                 <template v-slot:prepend>
@@ -473,8 +484,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="dialogAddMember = false">Hủy</v-btn>
-          <v-btn color="primary" @click="addMemberSubmit" :loading="addingMember" :disabled="!newMemberId">
+          <v-btn color="grey-darken-1" variant="text" class="font-weight-bold" rounded="pill" @click="dialogAddMember = false">Hủy</v-btn>
+          <v-btn class="primary-gradient-btn pulse-primary font-weight-bold px-6" rounded="pill" @click="addMemberSubmit" :loading="addingMember" :disabled="selectedNewMembers.length === 0">
             Thêm
           </v-btn>
         </v-card-actions>
@@ -508,13 +519,14 @@ const project = ref(null);
 
 // State cho các dialog và form
 const dialogAddMember = ref(false);
-const newMemberId = ref(null);
+const selectedNewMembers = ref([]);
 const addingMember = ref(false);
 const updating = ref(false);
 
 // State cho tìm kiếm user
 const searchResults = ref([]);
 const searching = ref(false);
+const searchQuery = ref('');
 let searchTimeout = null;
 
 // State cho Task
@@ -548,8 +560,8 @@ const isProjectParticipant = computed(() => isActualOwner.value || isMember.valu
 // Quyền chỉnh sửa dự án (Settings, Member): Admin (Global) OR Owner OR (Manager (System) + Tham gia dự án)
 const canEditProject = computed(() => isAdmin.value || isActualOwner.value || (isSystemManager.value && isProjectParticipant.value));
 
-// Quyền xem Tab: Admin (Global) OR Member/Manager/Owner
-const canViewTab = computed(() => isAdmin.value || isSystemManager.value || isProjectParticipant.value);
+// Quyền xem Tab: Admin (Global) OR Tham gia dự án
+const canViewTab = computed(() => isAdmin.value || isProjectParticipant.value);
 
 // Quyền quản lý Task: Admin (Global) OR Owner OR (Manager (System) + Tham gia dự án)
 const canManageTasks = computed(() => isAdmin.value || isActualOwner.value || (isSystemManager.value && isProjectParticipant.value));
@@ -881,7 +893,11 @@ const handleLeaveProject = async () => {
   if (!result.isConfirmed) return;
   try {
     await projectStore.leaveProject(project.value.id);
-    router.push({ name: 'MemberProjects' });
+    if (isAdmin.value || isSystemManager.value) {
+      router.replace('/admin/projects');
+    } else {
+      router.replace({ name: 'MemberProjects' });
+    }
   } catch (err) {
     Swal.fire('Lỗi', err.message, 'error');
   }
@@ -930,6 +946,12 @@ const rejectJoin = async (userId) => {
   }
 };
 
+// Xóa trắng thanh tìm kiếm khi chọn xong 1 user
+const onSelectionChange = () => {
+  searchQuery.value = '';
+  searchResults.value = [];
+};
+
 const onSearchUser = async (keyword) => {
   if (!keyword || keyword.length < 2) {
     searchResults.value = [];
@@ -940,7 +962,8 @@ const onSearchUser = async (keyword) => {
   const currentMemberIds = [
     project.value?.ownerId,
     ...(project.value?.memberIds || []),
-    ...(project.value?.pendingMemberIds || [])
+    ...(project.value?.pendingMemberIds || []),
+    ...selectedNewMembers.value.map(m => m.id || m)
   ].filter(Boolean);
 
   // WORKAROUND: Nếu là Admin và đã tải allUsers, thực hiện tìm kiếm client-side
@@ -972,14 +995,14 @@ const onSearchUser = async (keyword) => {
 };
 
 const addMemberSubmit = async () => {
-  const userIdToAdd = newMemberId.value?.id || newMemberId.value;
-
-  if (!userIdToAdd) return;
+  if (selectedNewMembers.value.length === 0) return;
 
   addingMember.value = true;
   try {
-    const payload = { userId: userIdToAdd };
-        await projectApi.assignMember(project.value.id, payload);
+    for (const member of selectedNewMembers.value) {
+      const payload = { userId: member.id || member };
+      await projectApi.assignMember(project.value.id, payload);
+    }
     await loadProjectData();
     Swal.fire({ title: 'Thành công', text: 'Thêm thành viên thành công!', icon: 'success', timer: 2000, showConfirmButton: false });
   } catch (err) {
@@ -988,8 +1011,7 @@ const addMemberSubmit = async () => {
     addingMember.value = false;
     // Đảm bảo luôn đóng form và xóa dữ liệu cũ cho dù thành công hay lỗi
     dialogAddMember.value = false;
-    newMemberId.value = null;
-    newMemberRole.value = 'member';
+    selectedNewMembers.value = [];
   }
 };
 
@@ -999,6 +1021,7 @@ const removeMember = async (userId) => {
   try {
     await projectApi.removeMember(project.value.id, userId);
     await loadProjectData();
+    Swal.fire({ title: 'Thành công', text: 'Đã xóa thành viên khỏi dự án!', icon: 'success', timer: 2000, showConfirmButton: false });
   } catch (err) {
     Swal.fire('Lỗi', err.message, 'error');
   }
@@ -1137,5 +1160,87 @@ onMounted(() => {
 
 .border-warning {
   border: 1px solid #FFB74D !important;
+}
+
+.join-btn {
+  background: linear-gradient(45deg, #1976D2, #42A5F5) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.leave-btn {
+  background: linear-gradient(45deg, #E53935, #EF5350) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.cancel-btn {
+  background: linear-gradient(45deg, #F57C00, #FFB74D) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.success-gradient-btn {
+  background: linear-gradient(45deg, #2E7D32, #66BB6A) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.danger-gradient-btn {
+  background: linear-gradient(45deg, #E53935, #EF5350) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+.primary-gradient-btn {
+  background: linear-gradient(45deg, #1976D2, #42A5F5) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+@keyframes pulse-primary {
+  0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0); }
+}
+
+.pulse-primary {
+  animation: pulse-primary 2s infinite;
+}
+
+@keyframes pulse-warning {
+  0% { box-shadow: 0 0 0 0 rgba(245, 124, 0, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(245, 124, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 124, 0, 0); }
+}
+
+.pulse-warning {
+  animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-danger {
+  0% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(229, 57, 53, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+}
+
+.pulse-danger {
+  animation: pulse-danger 2s infinite;
+}
+
+@keyframes pulse-success {
+  0% { box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(46, 125, 50, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 125, 50, 0); }
+}
+
+.pulse-success {
+  animation: pulse-success 2s infinite;
 }
 </style>
