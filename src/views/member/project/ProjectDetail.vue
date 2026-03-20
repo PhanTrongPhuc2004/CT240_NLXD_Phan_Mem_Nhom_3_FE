@@ -1113,6 +1113,7 @@ const updateTaskStatus = async (task, newStatus) => {
     // Sử dụng updateStatus chuyên biệt để tránh lỗi 403 (Member có thể update status nhưng không update được toàn bộ task)
     await taskStore.updateStatus(realTask.id, newStatus, '');
     await fetchBackendActivities();
+    Swal.fire({ title: 'Thành công', text: 'Cập nhật trạng thái thành công!', icon: 'success', timer: 2000, showConfirmButton: false });
   } catch (err) {
     realTask.status = oldStatus; // Hoàn tác đúng vào object reactive (realTask) thay vì task (slot scope)
     const msg = err.response?.status === 403 

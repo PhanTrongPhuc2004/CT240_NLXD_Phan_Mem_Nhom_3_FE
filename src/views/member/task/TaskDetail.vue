@@ -161,6 +161,7 @@ const updateStatus = async (newStatus) => {
         await taskStore.updateStatus(task.value.id, newStatus, null)
         // Load lại chi tiết để cập nhật giao diện
         await taskStore.getDetail(task.value.id)
+        Swal.fire({ title: 'Thành công', text: 'Cập nhật trạng thái thành công!', icon: 'success', timer: 2000, showConfirmButton: false })
     } catch (error) {
         const msg = error.response?.status === 403 
             ? "Bạn không có quyền chỉnh sửa trạng thái của công việc này" 

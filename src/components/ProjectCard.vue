@@ -110,6 +110,7 @@ import { useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import { projectApi } from '@/api/projectApi'; // SỬA: Dùng projectApi thay vì axios trực tiếp
+import Swal from 'sweetalert2';
 
 const props = defineProps({
   project: {
@@ -164,12 +165,13 @@ const goToDetail = () => {
 };
 
 const handleDelete = async () => {
-  if (confirm(`Bạn có chắc muốn xóa dự án "${props.project.name}" không?`)) {
-    try {
-      await projectStore.delete(props.project.id);
-    } catch (error) {
-      alert("Lỗi khi xóa: " + (error.response?.data || error.message));
-    }
+  const result = await Swal.fire({ title: 'Xác nhận xóa', text: `Bạn có chắc muốn xóa dự án "${props.project.name}" không?`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy' });
+  if (!result.isConfirmed) return;
+  try {
+    await projectStore.delete(props.project.id);
+    Swal.fire({ title: 'Đã xóa', text: 'Dự án đã được xóa thành công.', icon: 'success', timer: 1500, showConfirmButton: false });
+  } catch (error) {
+    Swal.fire('Lỗi', "Lỗi khi xóa: " + (error.response?.data || error.message), 'error');
   }
 };
 
@@ -178,21 +180,25 @@ const handleJoin = async () => {
   try {
     await projectStore.joinProject(props.project.id);
     await projectStore.fetchAll(); 
+    Swal.fire({ title: 'Thành công', text: 'Đã gửi yêu cầu tham gia', icon: 'success', timer: 1500, showConfirmButton: false });
   } catch (error) {
-    alert("Lỗi: " + (error.response?.data || error.message));
+    Swal.fire('Lỗi', "Lỗi: " + (error.response?.data || error.message), 'error');
   } finally {
     loading.value = false;
   }
 };
 
 const handleLeave = async () => {
-  if (!confirm(`Bạn có chắc muốn rời khỏi dự án "${props.project.name}"?`)) return;
+  const result = await Swal.fire({ title: 'Xác nhận', text: `Bạn có chắc muốn rời khỏi dự án "${props.project.name}"?`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Rời dự án', cancelButtonText: 'Hủy' });
+  if (!result.isConfirmed) return;
+
   loading.value = true;
   try {
     await projectStore.leaveProject(props.project.id);
     await projectStore.fetchAll();
+    Swal.fire({ title: 'Thành công', text: 'Đã rời khỏi dự án', icon: 'success', timer: 1500, showConfirmButton: false });
   } catch (error) {
-    alert("Lỗi: " + (error.response?.data || error.message));
+    Swal.fire('Lỗi', "Lỗi: " + (error.response?.data || error.message), 'error');
   } finally {
     loading.value = false;
   }
@@ -200,14 +206,16 @@ const handleLeave = async () => {
 
 // Hàm hủy yêu cầu mới thêm
 const handleCancelRequest = async () => {
-  if (!confirm("Bạn muốn hủy yêu cầu tham gia dự án này?")) return;
+  const result = await Swal.fire({ title: 'Xác nhận', text: "Bạn muốn hủy yêu cầu tham gia dự án này?", icon: 'question', showCancelButton: true, confirmButtonText: 'Hủy yêu cầu', cancelButtonText: 'Đóng' });
+  if (!result.isConfirmed) return;
   
   loading.value = true;
   try {
     await projectApi.cancelJoinRequest(props.project.id);
     await projectStore.fetchAll(); // Tải lại danh sách để cập nhật trạng thái
+    Swal.fire({ title: 'Thành công', text: 'Đã hủy yêu cầu', icon: 'success', timer: 1500, showConfirmButton: false });
   } catch (error) {
-    alert("Lỗi: " + (error.response?.data || error.message));
+    Swal.fire('Lỗi', "Lỗi: " + (error.response?.data || error.message), 'error');
   } finally {
     loading.value = false;
   }
