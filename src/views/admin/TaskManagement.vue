@@ -128,7 +128,7 @@
 
             <!-- Custom hiển thị Status -->
             <template v-slot:item.status="{ item }">
-                <v-menu v-if="canManageTasks || item.assigneeId === authStore.user?.id" location="bottom">
+                <v-menu v-if="canManageTaskItem(item) || item.assigneeId === authStore.user?.id" location="bottom">
                     <template v-slot:activator="{ props }">
                         <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small" class="cursor-pointer font-weight-bold" style="min-width: 140px; justify-content: center;">
                             {{ getTaskStatusVN(item.status) }}
@@ -158,7 +158,7 @@
 
             <template v-slot:item.actions="{ item }">
                 <v-icon size="small" class="me-2" @click="goDetail(item)">mdi-eye</v-icon>
-                <template v-if="canManageTasks">
+                <template v-if="canManageTaskItem(item)">
                     <v-icon size="small" class="me-2" @click="editItem(item)">mdi-pencil</v-icon>
                     <v-icon size="small" color="error" @click="deleteItem(item)">mdi-delete</v-icon>
                 </template>
@@ -195,6 +195,18 @@ const authStore = useAuthStore()
 // Admin chỉ có quyền xem, không có quyền tạo/sửa/xóa task từ trang quản trị này.
 const canManageTasks = computed(() => authStore.userRole === 'MANAGER')
 
+const canManageTaskItem = (item) => {
+    const realItem = item.raw || item;
+    if (authStore.userRole !== 'MANAGER') return false;
+    const currentUserId = authStore.user?.id;
+    if (!currentUserId) return false;
+    
+    const project = projects.value.find(p => p.id === realItem.projectId);
+    if (!project) return false;
+    
+    return project.ownerId === currentUserId || project.memberIds?.includes(currentUserId);
+}
+
 const router = useRouter()
 
 const dialog = ref(false)
@@ -229,7 +241,6 @@ const projectsForDropdown = computed(() => {
         if (!currentUserId) return [];
         return projects.value.filter(p => 
             p.ownerId === currentUserId ||
-            p.managerIds?.includes(currentUserId) ||
             p.memberIds?.includes(currentUserId)
         );
     }
@@ -246,7 +257,7 @@ const projectUsers = computed(() => {
     if (!project) return [];
 
     // 3. Lấy ID của tất cả thành viên trong dự án
-    const memberIds = [project.ownerId, ...(project.managerIds || []), ...(project.memberIds || [])].filter(Boolean);
+    const memberIds = [project.ownerId, ...(project.memberIds || [])].filter(Boolean);
 
     // 4. Lọc danh sách user toàn hệ thống để lấy object user tương ứng
     // và loại bỏ những user có vai trò là ADMIN.
@@ -329,7 +340,7 @@ const handleUpdateStatus = async (item, newStatus) => {
         await taskStore.updateStatus(realItem.id, newStatus, '')
     } catch (err) {
         const msg = err.response?.status === 403 
-            ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
+            ? "Bạn không có quyền chỉnh sửa trạng thái của công việc này" 
             : (err.response?.data?.message || err.message)
         Swal.fire('Lỗi', "Lỗi cập nhật trạng thái: " + msg, 'error')
     }
@@ -402,7 +413,7 @@ async function save() {
     if (canManageTasks.value && payload.projectId && payload.assigneeId) {
         const project = projects.value.find(p => p.id === payload.projectId)
         if (project) {
-            const members = [project.ownerId, ...(project.managerIds || []), ...(project.memberIds || [])]
+            const members = [project.ownerId, ...(project.memberIds || [])]
             if (!members.includes(payload.assigneeId)) {
                 try {
                     await projectApi.assignMember(payload.projectId, { userId: payload.assigneeId })

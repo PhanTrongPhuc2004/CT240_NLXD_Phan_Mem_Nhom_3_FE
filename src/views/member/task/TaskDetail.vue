@@ -88,6 +88,7 @@ import { useTaskStore } from '@/stores/task'
 import { useProjectStore } from '@/stores/project'
 import { useUserStore } from '@/stores/user'
 import { useAuthStore } from '@/stores/auth'
+import Swal from 'sweetalert2'
 import CommentSection from '@/components/CommentSection.vue'
 
 const route = useRoute()
@@ -102,15 +103,21 @@ const loading = computed(() => taskStore.loading)
 const canChangeStatus = computed(() => {
     // Admin chỉ có quyền xem
     if (authStore.userRole === 'ADMIN') return false
-    // Manager có quyền thay đổi
-    if (authStore.userRole === 'MANAGER') return true
     
-    // Check quyền Project Owner hoặc Project Manager (nếu user chỉ là MEMBER hệ thống nhưng là Manager dự án)
+    const uid = authStore.user?.id
     const project = projectStore.projects.find(p => p.id === task.value?.projectId)
+    
+    // Manager hệ thống có quyền thay đổi nếu nằm trong dự án
+    if (authStore.userRole === 'MANAGER') {
+        if (project) {
+            return project.ownerId === uid || project.memberIds?.includes(uid)
+        }
+        return false;
+    }
+    
+    // Check quyền Project Owner
     if (project) {
-        const uid = authStore.user?.id
         if (project.ownerId === uid) return true
-        if (project.managerIds?.includes(uid)) return true
     }
 
     // Người được giao việc (Assignee) có quyền thay đổi
@@ -156,9 +163,9 @@ const updateStatus = async (newStatus) => {
         await taskStore.getDetail(task.value.id)
     } catch (error) {
         const msg = error.response?.status === 403 
-            ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
+            ? "Bạn không có quyền chỉnh sửa trạng thái của công việc này" 
             : (error.response?.data?.message || error.message)
-        alert('Lỗi cập nhật trạng thái: ' + msg)
+        Swal.fire('Lỗi', 'Lỗi cập nhật trạng thái: ' + msg, 'error')
     }
 }
 

@@ -1090,7 +1090,7 @@ const updateTaskStatus = async (task, newStatus) => {
   } catch (err) {
     realTask.status = oldStatus; // Hoàn tác đúng vào object reactive (realTask) thay vì task (slot scope)
     const msg = err.response?.status === 403 
-      ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
+      ? "Bạn không có quyền chỉnh sửa trạng thái của công việc này" 
       : (err.response?.data?.message || err.message);
     Swal.fire('Lỗi', "Lỗi cập nhật trạng thái: " + msg, 'error');
   }

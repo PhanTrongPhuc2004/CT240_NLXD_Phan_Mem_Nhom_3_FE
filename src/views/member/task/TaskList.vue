@@ -142,7 +142,7 @@ const handleUpdateStatus = async (item, newStatus) => {
         await taskStore.updateStatus(realItem.id, newStatus, '')
     } catch (err) {
         const msg = err.response?.status === 403 
-            ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
+            ? "Bạn không có quyền chỉnh sửa trạng thái của công việc này" 
             : (err.response?.data?.message || err.message)
         Swal.fire('Lỗi', "Lỗi cập nhật trạng thái: " + msg, 'error')
     }
