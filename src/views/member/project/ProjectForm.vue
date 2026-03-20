@@ -186,9 +186,9 @@ const handleSubmit = async () => {
 
     // 2. Gọi API thêm từng thành viên vào dự án vừa tạo (Workaround lỗi Backend không lưu memberIds)
     if (form.value.members && form.value.members.length > 0 && newProjectId) {
-      await Promise.all(form.value.members.map(member => 
-        projectApi.assignMember(newProjectId, { userId: member.id })
-      ));
+      for (const member of form.value.members) {
+        await projectApi.assignMember(newProjectId, { userId: member.id });
+      }
     }
 
     Swal.fire({ title: 'Thành công!', text: 'Tạo dự án thành công!', icon: 'success', timer: 2000, showConfirmButton: false });

@@ -256,8 +256,8 @@
 
           <!-- TAB 3: THÀNH VIÊN -->
           <v-window-item value="members">
-            <!-- SECTION: YÊU CẦU THAM GIA (Chỉ hiện cho Owner/Manager) -->
-            <v-card v-if="(canEditProject || isManager) && project?.pendingMemberIds?.length > 0"
+            <!-- SECTION: YÊU CẦU THAM GIA (Chỉ hiện cho Owner và Admin/Manager hệ thống) -->
+            <v-card v-if="canEditProject && project?.pendingMemberIds?.length > 0"
               class="pa-4 mb-6 border-warning" elevation="1" variant="outlined" color="orange-lighten-5">
               <div class="d-flex align-center mb-2">
                 <v-icon color="warning" class="mr-2">mdi-account-clock</v-icon>
@@ -290,7 +290,7 @@
             <v-card class="pa-4" elevation="1">
               <div class="d-flex justify-space-between align-center mb-4">
                 <h3 class="text-h6">Thành viên dự án ({{ project?.memberIds?.length || 0 }})</h3>
-                <v-btn v-if="canEditProject || isManager" color="primary" prepend-icon="mdi-account-plus"
+                <v-btn v-if="canEditProject" color="primary" prepend-icon="mdi-account-plus"
                   @click="dialogAddMember = true">
                   Thêm thành viên
                 </v-btn>
@@ -300,7 +300,7 @@
                 <!-- Owner -->
                 <v-list-item class="mb-2 rounded border" :class="{ 'bg-blue-lighten-5': project?.ownerId === currentUserId }">
                   <template v-slot:prepend>
-                    <v-chip color="purple" size="small" label class="mr-3 font-weight-bold">Chủ sở hữu</v-chip>
+                    <v-chip color="purple" size="small" label class="mr-3 font-weight-bold">( Chủ sở hữu )</v-chip>
                     <UserAvatarName :user-id="project?.ownerId" />
                   </template>
                   <template v-slot:append>
@@ -308,64 +308,26 @@
                   </template>
                 </v-list-item>
 
-                <!-- Managers -->
-                <v-list-item v-for="managerId in project?.managerIds" :key="managerId" class="mb-2 rounded border" :class="{ 'bg-blue-lighten-5': managerId === currentUserId }">
+                <!-- Các thành viên còn lại (Bắt role động) -->
+                <v-list-item v-for="userId in allProjectMembersExcludingOwner" :key="userId" class="mb-2 rounded border" :class="{ 'bg-blue-lighten-5': userId === currentUserId }">
                   <template v-slot:prepend>
-                    <v-chip color="blue" size="small" label class="mr-3 font-weight-bold">Quản lý</v-chip>
-                    <UserAvatarName :user-id="managerId" />
+                    <v-chip :color="getMemberRoleDisplay(userId).color" size="small" label :variant="getMemberRoleDisplay(userId).variant" class="mr-3 font-weight-bold">
+                      {{ getMemberRoleDisplay(userId).text }}
+                    </v-chip>
+                    <UserAvatarName :user-id="userId" />
                   </template>
                   <template v-slot:append>
-                    <span v-if="managerId === currentUserId" class="text-caption text-primary font-weight-bold mr-3 font-italic">(Bạn)</span>
+                    <span v-if="userId === currentUserId" class="text-caption text-primary font-weight-bold mr-3 font-italic">(Bạn)</span>
 
-                    <v-menu v-if="canEditProject">
-                      <template v-slot:activator="{ props }">
-                        <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props"></v-btn>
-                      </template>
-                      <v-list dense>
-                        <v-list-item @click="removeManager(managerId)">
-                          <template v-slot:prepend>
-                            <v-icon color="warning">mdi-account-arrow-down</v-icon>
-                          </template>
-                          <v-list-item-title>Xóa quyền quản lý</v-list-item-title>
-                        </v-list-item>
-                        <v-list-item @click="removeMember(managerId)">
-                          <template v-slot:prepend>
-                            <v-icon color="error">mdi-account-remove</v-icon>
-                          </template>
-                          <v-list-item-title>Xóa khỏi dự án</v-list-item-title>
-                        </v-list-item>
-                      </v-list>
-                    </v-menu>
-                  </template>
-                </v-list-item>
-
-                <!-- Members -->
-                <v-list-item v-for="memberId in filteredMembers" :key="memberId" class="mb-2 rounded border" :class="{ 'bg-blue-lighten-5': memberId === currentUserId }">
-                  <template v-slot:prepend>
-                    <v-chip color="grey-darken-1" size="small" label variant="outlined" class="mr-3 font-weight-bold">Thành viên</v-chip>
-                    <UserAvatarName :user-id="memberId" />
-                  </template>
-                  <template v-slot:append>
-                    <span v-if="memberId === currentUserId" class="text-caption text-primary font-weight-bold mr-3 font-italic">(Bạn)</span>
-                    <v-menu v-if="canEditProject || isManager">
-                      <template v-slot:activator="{ props }">
-                        <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props"></v-btn>
-                      </template>
-                      <v-list dense>
-                        <v-list-item v-if="canEditProject" @click="promoteToManager(memberId)">
-                          <template v-slot:prepend>
-                            <v-icon color="success">mdi-account-arrow-up</v-icon>
-                          </template>
-                          <v-list-item-title>Thăng cấp Quản lý</v-list-item-title>
-                        </v-list-item>
-                        <v-list-item @click="removeMember(memberId)">
-                          <template v-slot:prepend>
-                            <v-icon color="error">mdi-account-remove</v-icon>
-                          </template>
-                          <v-list-item-title>Xóa khỏi dự án</v-list-item-title>
-                        </v-list-item>
-                      </v-list>
-                    </v-menu>
+                    <v-btn 
+                      v-if="canEditProject" 
+                      icon="mdi-account-remove" 
+                      color="error" 
+                      variant="text" 
+                      size="small" 
+                      title="Xóa khỏi dự án"
+                      @click="removeMember(userId)"
+                    ></v-btn>
                   </template>
                 </v-list-item>
               </v-list>
@@ -547,7 +509,6 @@ const project = ref(null);
 // State cho các dialog và form
 const dialogAddMember = ref(false);
 const newMemberId = ref(null);
-const newMemberRole = ref('member');
 const addingMember = ref(false);
 const updating = ref(false);
 
@@ -575,15 +536,14 @@ const currentUserId = computed(() => authStore.user?.id);
 const isActualOwner = computed(() => project.value?.ownerId === currentUserId.value);
 const isOwner = computed(() => isActualOwner.value);
 
-const isManager = computed(() => project.value?.managerIds?.includes(currentUserId.value));
 const isMember = computed(() => project.value?.memberIds?.includes(currentUserId.value));
 const isPending = computed(() => project.value?.pendingMemberIds?.includes(currentUserId.value));
 
 const isAdmin = computed(() => authStore.userRole === 'ADMIN');
 const isSystemManager = computed(() => authStore.userRole === 'MANAGER');
 
-// Kiểm tra xem User (Manager) có tham gia dự án không (Owner, Manager, hoặc Member)
-const isProjectParticipant = computed(() => isActualOwner.value || isManager.value || isMember.value);
+// Kiểm tra xem User (Manager) có tham gia dự án không (Owner hoặc Member)
+const isProjectParticipant = computed(() => isActualOwner.value || isMember.value);
 
 // Quyền chỉnh sửa dự án (Settings, Member): Admin (Global) OR Owner OR (Manager (System) + Tham gia dự án)
 const canEditProject = computed(() => isAdmin.value || isActualOwner.value || (isSystemManager.value && isProjectParticipant.value));
@@ -591,8 +551,8 @@ const canEditProject = computed(() => isAdmin.value || isActualOwner.value || (i
 // Quyền xem Tab: Admin (Global) OR Member/Manager/Owner
 const canViewTab = computed(() => isAdmin.value || isSystemManager.value || isProjectParticipant.value);
 
-// Quyền quản lý Task: Admin (Global) OR Owner OR ProjectManager OR (Manager (System) + Tham gia dự án)
-const canManageTasks = computed(() => isAdmin.value || isActualOwner.value || isManager.value || (isSystemManager.value && isProjectParticipant.value));
+// Quyền quản lý Task: Admin (Global) OR Owner OR (Manager (System) + Tham gia dự án)
+const canManageTasks = computed(() => isAdmin.value || isActualOwner.value || (isSystemManager.value && isProjectParticipant.value));
 
 const canUpdateStatus = (task) => {
   const realTask = task.raw || task;
@@ -622,12 +582,26 @@ const taskHeaders = computed(() => {
   return headers;
 });
 
-// Lọc danh sách member để không hiển thị trùng với Owner và Manager
-const filteredMembers = computed(() => {
+// Lấy danh sách thành viên (trừ owner) để hiển thị
+const allProjectMembersExcludingOwner = computed(() => {
   if (!project.value) return [];
-  const excludeIds = [project.value.ownerId, ...(project.value.managerIds || [])];
-  return project.value.memberIds.filter(id => !excludeIds.includes(id));
+  const members = project.value.memberIds || [];
+  return members.filter(id => id !== project.value.ownerId);
 });
+
+// Bắt role hệ thống (allUsers) để hiển thị nhãn (chip)
+const getMemberRoleDisplay = (userId) => {
+  const user = allUsers.value.find(u => u.id === userId);
+  const systemRole = user?.role; // 'ADMIN', 'MANAGER', 'MEMBER'
+
+  if (systemRole === 'MANAGER') {
+    return { text: '( Quản trị viên )', color: 'blue', variant: 'elevated' };
+  }
+  if (systemRole === 'ADMIN') {
+    return { text: '( Admin )', color: 'red', variant: 'elevated' };
+  }
+  return { text: '( Thành viên )', color: 'grey-darken-1', variant: 'outlined' };
+};
 
 // Lọc danh sách Task thuộc dự án này
 const projectTasks = computed(() => {
@@ -673,7 +647,6 @@ const projectMembersList = computed(() => {
   if (!project.value || allUsers.value.length === 0) return [];
   const allMemberIds = [
     project.value.ownerId,
-    ...(project.value.managerIds || []),
     ...(project.value.memberIds || [])
   ];
   return allUsers.value.filter(u => allMemberIds.includes(u.id));
@@ -839,7 +812,6 @@ const fetchAllUsers = async () => {
 
     const memberIds = [
       project.value.ownerId,
-      ...(project.value.managerIds || []),
       ...(project.value.memberIds || [])
     ].filter(Boolean);
     
@@ -967,7 +939,6 @@ const onSearchUser = async (keyword) => {
   // Lấy danh sách ID các thành viên hiện tại (để lọc khỏi kết quả tìm kiếm)
   const currentMemberIds = [
     project.value?.ownerId,
-    ...(project.value?.managerIds || []),
     ...(project.value?.memberIds || []),
     ...(project.value?.pendingMemberIds || [])
   ].filter(Boolean);
@@ -1008,11 +979,7 @@ const addMemberSubmit = async () => {
   addingMember.value = true;
   try {
     const payload = { userId: userIdToAdd };
-    if (newMemberRole.value === 'manager') {
-      await projectApi.assignManager(project.value.id, payload);
-    } else {
-      await projectApi.assignMember(project.value.id, payload);
-    }
+        await projectApi.assignMember(project.value.id, payload);
     await loadProjectData();
     Swal.fire({ title: 'Thành công', text: 'Thêm thành viên thành công!', icon: 'success', timer: 2000, showConfirmButton: false });
   } catch (err) {
@@ -1034,30 +1001,6 @@ const removeMember = async (userId) => {
     await loadProjectData();
   } catch (err) {
     Swal.fire('Lỗi', err.message, 'error');
-  }
-};
-
-const removeManager = async (userId) => {
-  const result = await Swal.fire({ title: 'Xác nhận', text: "Chỉ xóa quyền quản lý của thành viên này?", icon: 'warning', showCancelButton: true, confirmButtonText: 'Xóa quyền', cancelButtonText: 'Hủy' });
-  if (!result.isConfirmed) return;
-  try {
-    await projectApi.removeManager(project.value.id, userId);
-    await loadProjectData();
-  } catch (err) {
-    Swal.fire('Lỗi', err.message, 'error');
-  }
-};
-
-const promoteToManager = async (userId) => {
-  const result = await Swal.fire({ title: 'Xác nhận', text: "Thăng cấp thành viên này thành Quản lý?", icon: 'question', showCancelButton: true, confirmButtonText: 'Thăng cấp', cancelButtonText: 'Hủy' });
-  if (!result.isConfirmed) return;
-  try {
-    const payload = { userId: userId };
-    await projectApi.assignManager(project.value.id, payload);
-    await loadProjectData();
-    Swal.fire({ title: 'Thành công', text: 'Thăng cấp thành công!', icon: 'success', timer: 2000, showConfirmButton: false });
-  } catch (err) {
-    Swal.fire('Lỗi', "Lỗi khi thăng cấp: " + (err.response?.data || err.message), 'error');
   }
 };
 
