@@ -33,18 +33,18 @@
                         <v-list-item-title>Bảng điều khiển</v-list-item-title>
                     </v-list-item>
 
-                    <v-list-item :to="{ name: 'ProjectManagement' }" class="menu-item px-4">
-                        <v-list-item-icon>
-                            <v-icon>mdi-folder-multiple-outline</v-icon>
-                        </v-list-item-icon>
-                        <v-list-item-title>Dự án</v-list-item-title>
-                    </v-list-item>
-
                     <v-list-item :to="{ name: 'UserManagement' }" class="menu-item px-4">
                         <v-list-item-icon>
                             <v-icon>mdi-account-group-outline</v-icon>
                         </v-list-item-icon>
                         <v-list-item-title>Người dùng</v-list-item-title>
+                    </v-list-item>
+
+                    <v-list-item :to="{ name: 'ProjectManagement' }" class="menu-item px-4">
+                        <v-list-item-icon>
+                            <v-icon>mdi-folder-multiple-outline</v-icon>
+                        </v-list-item-icon>
+                        <v-list-item-title>Dự án</v-list-item-title>
                     </v-list-item>
 
                     <v-list-item :to="{ name: 'TaskManagement' }" class="menu-item px-4">
