@@ -66,7 +66,9 @@
                                         <v-col cols="12" sm="6">
                                             <v-select
                                                 v-model="editedItem.priority"
-                                                :items="['LOW', 'MEDIUM', 'HIGH']"
+                                                :items="priorityOptions"
+                                                item-title="title"
+                                                item-value="value"
                                                 label="Độ ưu tiên"
                                                 :readonly="!canManageTasks"
                                             ></v-select>
@@ -74,7 +76,9 @@
                                         <v-col cols="12" sm="6">
                                             <v-select
                                                 v-model="editedItem.status"
-                                                :items="['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']"
+                                                :items="statusOptions"
+                                                item-title="title"
+                                                item-value="value"
                                                 label="Trạng thái"
                                                 :disabled="!canManageTasks"
                                             ></v-select>
@@ -126,28 +130,29 @@
             <template v-slot:item.status="{ item }">
                 <v-menu v-if="canManageTasks || item.assigneeId === authStore.user?.id" location="bottom">
                     <template v-slot:activator="{ props }">
-                        <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small" class="cursor-pointer" style="min-width: 140px; justify-content: space-between;">
-                            {{ item.status }}
+                        <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small" class="cursor-pointer font-weight-bold" style="min-width: 140px; justify-content: space-between;">
+                            {{ getTaskStatusVN(item.status) }}
                             <v-icon end size="small">mdi-chevron-down</v-icon>
                         </v-chip>
                     </template>
                     <v-list density="compact">
-                        <v-list-item v-for="status in ['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']" :key="status" :value="status" @click="handleUpdateStatus(item, status)">
+                        <v-list-item v-for="opt in statusOptions" :key="opt.value" :value="opt.value" @click="handleUpdateStatus(item, opt.value)">
                             <v-list-item-title>
-                                <v-chip size="x-small" :color="getStatusColor(status)">{{ status }}</v-chip>
+                                <v-chip size="x-small" :color="getStatusColor(opt.value)" class="mr-2"></v-chip>
+                                {{ opt.title }}
                             </v-list-item-title>
                         </v-list-item>
                     </v-list>
                 </v-menu>
-                <v-chip v-else :color="getStatusColor(item.status)" size="small" style="min-width: 140px; justify-content: center;">
-                    {{ item.status }}
+                <v-chip v-else :color="getStatusColor(item.status)" size="small" class="font-weight-bold" style="min-width: 140px; justify-content: center;">
+                    {{ getTaskStatusVN(item.status) }}
                 </v-chip>
             </template>
 
             <!-- Custom hiển thị Priority -->
             <template v-slot:item.priority="{ item }">
                 <v-chip :color="getPriorityColor(item.priority)" size="small" variant="outlined">
-                    {{ item.priority }}
+                    {{ getTaskPriorityVN(item.priority) }}
                 </v-chip>
             </template>
 
@@ -262,6 +267,31 @@ const formTitle = computed(() => {
   // Nếu có quyền quản lý thì là "Chỉnh sửa", không thì là "Chi tiết"
   return canManageTasks.value ? 'Chỉnh sửa công việc' : 'Chi tiết công việc'
 })
+
+// --- CÁC HÀM VIỆT HÓA ---
+const statusOptions = [
+  { title: 'Cần làm', value: 'TO_DO' },
+  { title: 'Đang làm', value: 'IN_PROGRESS' },
+  { title: 'Hoàn thành', value: 'DONE' },
+  { title: 'Đã hủy', value: 'CANCELLED' }
+];
+
+const priorityOptions = [
+  { title: 'Thấp', value: 'LOW' },
+  { title: 'Trung bình', value: 'MEDIUM' },
+  { title: 'Cao', value: 'HIGH' }
+];
+
+const getTaskStatusVN = (status) => {
+  const found = statusOptions.find(o => o.value === status);
+  return found ? found.title : status;
+};
+
+const getTaskPriorityVN = (priority) => {
+  const found = priorityOptions.find(o => o.value === priority);
+  return found ? found.title : priority;
+};
+// -------------------------
 
 // Hàm helper để lấy tên từ ID
 const getProjectName = (id) => {

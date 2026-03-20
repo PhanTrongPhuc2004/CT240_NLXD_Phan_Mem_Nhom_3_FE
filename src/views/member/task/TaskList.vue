@@ -21,14 +21,15 @@
                 <v-menu location="bottom">
                     <template v-slot:activator="{ props }">
                         <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small" link class="cursor-pointer" style="min-width: 140px; justify-content: space-between;">
-                            {{ item.status }}
+                            {{ getTaskStatusVN(item.status) }}
                             <v-icon end size="small">mdi-chevron-down</v-icon>
                         </v-chip>
                     </template>
                     <v-list density="compact">
-                        <v-list-item v-for="status in availableStatuses" :key="status" :value="status" @click="handleUpdateStatus(item, status)">
+                        <v-list-item v-for="opt in statusOptions" :key="opt.value" :value="opt.value" @click="handleUpdateStatus(item, opt.value)">
                             <v-list-item-title>
-                                <v-chip size="x-small" :color="getStatusColor(status)">{{ status }}</v-chip>
+                                <v-chip size="x-small" :color="getStatusColor(opt.value)" class="mr-2"></v-chip>
+                                {{ opt.title }}
                             </v-list-item-title>
                         </v-list-item>
                     </v-list>
@@ -37,7 +38,7 @@
 
             <template v-slot:item.priority="{ item }">
                 <v-chip :color="getPriorityColor(item.priority)" size="small" variant="outlined">
-                    {{ item.priority }}
+                    {{ getTaskPriorityVN(item.priority) }}
                 </v-chip>
             </template>
 
@@ -64,7 +65,28 @@ const taskStore = useTaskStore()
 const authStore = useAuthStore()
 const projectStore = useProjectStore()
 
-const availableStatuses = ['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']
+const statusOptions = [
+  { title: 'Cần làm', value: 'TO_DO' },
+  { title: 'Đang làm', value: 'IN_PROGRESS' },
+  { title: 'Hoàn thành', value: 'DONE' },
+  { title: 'Đã hủy', value: 'CANCELLED' }
+]
+
+const priorityOptions = [
+  { title: 'Thấp', value: 'LOW' },
+  { title: 'Trung bình', value: 'MEDIUM' },
+  { title: 'Cao', value: 'HIGH' }
+]
+
+const getTaskStatusVN = (status) => {
+  const found = statusOptions.find(o => o.value === status)
+  return found ? found.title : status
+}
+
+const getTaskPriorityVN = (priority) => {
+  const found = priorityOptions.find(o => o.value === priority)
+  return found ? found.title : priority
+}
 
 const loading = computed(() => taskStore.loading)
 
