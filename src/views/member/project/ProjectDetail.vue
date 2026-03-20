@@ -300,7 +300,7 @@
                 <!-- Owner -->
                 <v-list-item class="mb-2 rounded border" :class="{ 'bg-blue-lighten-5': project?.ownerId === currentUserId }">
                   <template v-slot:prepend>
-                    <v-chip color="purple" size="small" label class="mr-3 font-weight-bold">( Chủ sở hữu )</v-chip>
+                    <v-chip color="purple" size="small" label class="mr-3 font-weight-bold"> Chủ sở hữu</v-chip>
                     <UserAvatarName :user-id="project?.ownerId" />
                   </template>
                   <template v-slot:append>
@@ -595,12 +595,12 @@ const getMemberRoleDisplay = (userId) => {
   const systemRole = user?.role; // 'ADMIN', 'MANAGER', 'MEMBER'
 
   if (systemRole === 'MANAGER') {
-    return { text: '( Quản trị viên )', color: 'blue', variant: 'elevated' };
+    return { text: ' Quản trị viên', color: 'blue', variant: 'elevated' };
   }
   if (systemRole === 'ADMIN') {
-    return { text: '( Admin )', color: 'red', variant: 'elevated' };
+    return { text: 'Admin ', color: 'red', variant: 'elevated' };
   }
-  return { text: '( Thành viên )', color: 'grey-darken-1', variant: 'outlined' };
+  return { text: 'Thành viên', color: 'grey-darken-1', variant: 'outlined' };
 };
 
 // Lọc danh sách Task thuộc dự án này
