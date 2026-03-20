@@ -141,20 +141,27 @@
               <v-col cols="12" md="4">
                 <v-card class="pa-4 h-100" elevation="1">
                   <v-card-title>Hoạt động gần đây</v-card-title>
-                  <v-list lines="two">
-                    <v-list-item>
+                  <v-list lines="two" v-if="recentActivities.length > 0">
+                    <v-list-item v-for="activity in recentActivities" :key="activity.id" class="mb-2">
                       <template v-slot:prepend>
-                        <v-avatar color="blue-lighten-4" size="32">
-                          <v-icon size="16" color="blue">mdi-plus</v-icon>
+                        <v-avatar :color="`${activity.color}-lighten-4`" size="32" class="mr-3">
+                          <v-icon size="16" :color="activity.color">{{ activity.icon }}</v-icon>
                         </v-avatar>
                       </template>
-                      <v-list-item-title class="text-body-2">Dự án được tạo</v-list-item-title>
-                      <v-list-item-subtitle class="text-caption">
-                        {{ new Date(project?.createdAt).toLocaleDateString('vi-VN') }}
+                      <v-list-item-title class="text-body-2 font-weight-bold">{{ activity.title }}</v-list-item-title>
+                      <v-list-item-subtitle class="text-caption d-flex flex-column mt-1">
+                        <span class="text-truncate mb-1" style="max-width: 250px;">{{ activity.subtitle }}</span>
+                        <span class="text-grey d-flex align-center">
+                          <v-icon size="12" class="mr-1">mdi-clock-outline</v-icon>
+                          {{ activity.date.toLocaleString('vi-VN') }}
+                        </span>
                       </v-list-item-subtitle>
                     </v-list-item>
-                    <!-- TODO: List activity log -->
                   </v-list>
+                  <div v-else class="text-center py-8">
+                    <v-icon size="48" color="grey-lighten-2">mdi-history</v-icon>
+                    <div class="text-grey mt-2">Chưa có hoạt động nào</div>
+                  </div>
                 </v-card>
               </v-col>
             </v-row>
@@ -195,7 +202,7 @@
                         label
                         class="cursor-pointer font-weight-bold"
                         append-icon="mdi-chevron-down"
-                        style="min-width: 140px; justify-content: space-between;"
+                        style="min-width: 140px; justify-content: center;"
                       >
                         {{ getTaskStatusVN(item.status) }}
                       </v-chip>
@@ -227,7 +234,7 @@
                 </template>
 
                 <template v-slot:item.priority="{ item }">
-                  <v-chip :color="getTaskPriorityColor(item.priority)" size="small" variant="outlined">
+                  <v-chip :color="getTaskPriorityColor(item.priority)" size="small" variant="outlined" style="min-width: 100px; justify-content: center;">
                     {{ getTaskPriorityVN(item.priority) }}
                   </v-chip>
                 </template>
@@ -291,22 +298,24 @@
 
               <v-list>
                 <!-- Owner -->
-                <v-list-item class="mb-2 rounded border">
+                <v-list-item class="mb-2 rounded border" :class="{ 'bg-blue-lighten-5': project?.ownerId === currentUserId }">
                   <template v-slot:prepend>
+                    <v-chip color="purple" size="small" label class="mr-3 font-weight-bold">Chủ sở hữu</v-chip>
                     <UserAvatarName :user-id="project?.ownerId" />
                   </template>
                   <template v-slot:append>
-                    <v-chip color="purple" size="small" label>Chủ dự án</v-chip>
+                    <span v-if="project?.ownerId === currentUserId" class="text-caption text-primary font-weight-bold mr-3 font-italic">(Bạn)</span>
                   </template>
                 </v-list-item>
 
                 <!-- Managers -->
-                <v-list-item v-for="managerId in project?.managerIds" :key="managerId" class="mb-2 rounded border">
+                <v-list-item v-for="managerId in project?.managerIds" :key="managerId" class="mb-2 rounded border" :class="{ 'bg-blue-lighten-5': managerId === currentUserId }">
                   <template v-slot:prepend>
+                    <v-chip color="blue" size="small" label class="mr-3 font-weight-bold">Quản lý</v-chip>
                     <UserAvatarName :user-id="managerId" />
                   </template>
                   <template v-slot:append>
-                    <v-chip color="blue" size="small" label class="mr-2">Quản lý</v-chip>
+                    <span v-if="managerId === currentUserId" class="text-caption text-primary font-weight-bold mr-3 font-italic">(Bạn)</span>
 
                     <v-menu v-if="canEditProject">
                       <template v-slot:activator="{ props }">
@@ -331,11 +340,13 @@
                 </v-list-item>
 
                 <!-- Members -->
-                <v-list-item v-for="memberId in filteredMembers" :key="memberId" class="mb-2 rounded border">
+                <v-list-item v-for="memberId in filteredMembers" :key="memberId" class="mb-2 rounded border" :class="{ 'bg-blue-lighten-5': memberId === currentUserId }">
                   <template v-slot:prepend>
+                    <v-chip color="grey-darken-1" size="small" label variant="outlined" class="mr-3 font-weight-bold">Thành viên</v-chip>
                     <UserAvatarName :user-id="memberId" />
                   </template>
                   <template v-slot:append>
+                    <span v-if="memberId === currentUserId" class="text-caption text-primary font-weight-bold mr-3 font-italic">(Bạn)</span>
                     <v-menu v-if="canEditProject || isManager">
                       <template v-slot:activator="{ props }">
                         <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props"></v-btn>
@@ -497,11 +508,6 @@
               </v-list-item>
             </template>
           </v-autocomplete>
-
-          <v-radio-group v-model="newMemberRole" inline class="mt-4">
-            <v-radio label="Thành viên" value="member"></v-radio>
-            <v-radio label="Quản lý" value="manager"></v-radio>
-          </v-radio-group>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -606,12 +612,12 @@ const dialogTitle = computed(() => {
 
 const taskHeaders = computed(() => {
   const headers = [
-    { title: 'Tiêu đề', key: 'title' },
-    { title: 'Người thực hiện', key: 'assigneeId' },
-    { title: 'Trạng thái', key: 'status', width: '180px' },
-    { title: 'Ưu tiên', key: 'priority' },
-    { title: 'Hạn chót', key: 'deadline' },
-    { title: 'Hành động', key: 'actions', sortable: false, align: 'end' },
+    { title: 'Tiêu đề', key: 'title', width: '16.66%' },
+    { title: 'Người thực hiện', key: 'assigneeId', width: '16.66%' },
+    { title: 'Trạng thái', key: 'status', align: 'center', width: '16.66%' },
+    { title: 'Ưu tiên', key: 'priority', align: 'center', width: '16.66%' },
+    { title: 'Hạn chót', key: 'deadline', align: 'center', width: '16.66%' },
+    { title: 'Hành động', key: 'actions', sortable: false, align: 'center', width: '16.66%' },
   ];
   return headers;
 });
@@ -636,6 +642,30 @@ const completedTasksCount = computed(() => {
 const progressPercentage = computed(() => {
   if (projectTasks.value.length === 0) return 0;
   return (completedTasksCount.value / projectTasks.value.length) * 100;
+});
+
+// State chứa hoạt động từ Backend
+const backendActivities = ref([]);
+const fetchBackendActivities = async () => {
+  try {
+    const res = await api.get(`/projects/${route.params.id}/activities`);
+    backendActivities.value = res.data.map(log => ({
+      id: log.id,
+      title: log.action,
+      subtitle: log.details,
+      date: new Date(log.createdAt),
+      icon: log.icon,
+      color: log.color
+    }));
+  } catch (err) {
+    // Hiển thị lỗi rõ ràng ra Console F12 để kiểm tra xem có bị Backend trả lỗi 403 Forbidden không
+    console.error("Lỗi lấy lịch sử hoạt động từ Backend:", err.response?.status, err.response?.data || err.message);
+  }
+};
+
+const recentActivities = computed(() => {
+  // CHỈ DÙNG DỮ LIỆU TỪ BACKEND
+  return backendActivities.value.sort((a, b) => b.date - a.date).slice(0, 10);
 });
 
 // Lấy danh sách user object của các thành viên trong dự án (để hiển thị trong dropdown giao việc)
@@ -781,6 +811,8 @@ const loadProjectData = async () => {
     // Load tasks và users
     taskStore.fetchAll(); 
     fetchAllUsers();
+    // Thử lấy lịch sử hoạt động từ Backend
+    fetchBackendActivities();
   } catch (err) {
     console.error(err);
     error.value = "Không thể tải thông tin dự án. Có thể dự án không tồn tại hoặc bạn không có quyền truy cập.";
@@ -1093,6 +1125,7 @@ const saveTask = async () => {
     } else {
       await taskStore.create(payload);
     }
+    await fetchBackendActivities();
     closeTaskDialog();
     // taskStore.fetchAll() được gọi tự động hoặc reactive update
   } catch (err) {
@@ -1110,6 +1143,7 @@ const updateTaskStatus = async (task, newStatus) => {
   try {
     // Sử dụng updateStatus chuyên biệt để tránh lỗi 403 (Member có thể update status nhưng không update được toàn bộ task)
     await taskStore.updateStatus(realTask.id, newStatus, '');
+    await fetchBackendActivities();
   } catch (err) {
     realTask.status = oldStatus; // Hoàn tác đúng vào object reactive (realTask) thay vì task (slot scope)
     const msg = err.response?.status === 403 
@@ -1130,6 +1164,7 @@ const deleteTaskItem = async (item) => {
 
   try {
     await taskStore.delete(realItem.id);
+    await fetchBackendActivities();
   } catch (err) {
     Swal.fire('Lỗi', err.message, 'error');
   }

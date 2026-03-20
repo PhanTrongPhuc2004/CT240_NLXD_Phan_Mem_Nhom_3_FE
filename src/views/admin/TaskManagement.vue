@@ -130,7 +130,7 @@
             <template v-slot:item.status="{ item }">
                 <v-menu v-if="canManageTasks || item.assigneeId === authStore.user?.id" location="bottom">
                     <template v-slot:activator="{ props }">
-                        <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small" class="cursor-pointer font-weight-bold" style="min-width: 140px; justify-content: space-between;">
+                        <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small" class="cursor-pointer font-weight-bold" style="min-width: 140px; justify-content: center;">
                             {{ getTaskStatusVN(item.status) }}
                             <v-icon end size="small">mdi-chevron-down</v-icon>
                         </v-chip>
@@ -151,7 +151,7 @@
 
             <!-- Custom hiển thị Priority -->
             <template v-slot:item.priority="{ item }">
-                <v-chip :color="getPriorityColor(item.priority)" size="small" variant="outlined">
+                <v-chip :color="getPriorityColor(item.priority)" size="small" variant="outlined" style="min-width: 100px; justify-content: center;">
                     {{ getTaskPriorityVN(item.priority) }}
                 </v-chip>
             </template>
@@ -200,13 +200,13 @@ const router = useRouter()
 const dialog = ref(false)
 const dialogDelete = ref(false)
 const headers = [
-    { title: 'Tiêu đề', key: 'title' },
-    { title: 'Dự án', key: 'projectId' },
-    { title: 'Người thực hiện', key: 'assigneeId' },
-    { title: 'Ưu tiên', key: 'priority' },
-    { title: 'Trạng thái', key: 'status' },
-    { title: 'Hạn chót', key: 'deadline' },
-    { title: 'Hành động', key: 'actions', sortable: false, align: 'end' },
+    { title: 'Tiêu đề', key: 'title', width: '14.28%' },
+    { title: 'Dự án', key: 'projectId', width: '14.28%' },
+    { title: 'Người thực hiện', key: 'assigneeId', width: '14.28%' },
+    { title: 'Ưu tiên', key: 'priority', align: 'center', width: '14.28%' },
+    { title: 'Trạng thái', key: 'status', align: 'center', width: '14.28%' },
+    { title: 'Hạn chót', key: 'deadline', align: 'center', width: '14.28%' },
+    { title: 'Hành động', key: 'actions', sortable: false, align: 'center', width: '14.28%' },
 ]
 
 const activeTab = ref('all')

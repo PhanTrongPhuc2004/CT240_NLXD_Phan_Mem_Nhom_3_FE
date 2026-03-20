@@ -113,6 +113,7 @@ import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/api/index';
 import { projectApi } from '@/api/projectApi';
+import Swal from 'sweetalert2';
 
 const router = useRouter();
 const projectStore = useProjectStore();
@@ -163,7 +164,7 @@ const handleSubmit = async () => {
   
   // SỬA: Nếu form không hợp lệ (ví dụ chưa nhập tên), chuyển về tab Overview để user thấy lỗi
   if (!valid) {
-    alert("Vui lòng nhập đầy đủ thông tin bắt buộc (Tên dự án) ở tab Tổng quan.");
+    Swal.fire('Cảnh báo', "Vui lòng nhập đầy đủ thông tin bắt buộc (Tên dự án) ở tab Tổng quan.", 'warning');
     activeTab.value = 'overview';
     return;
   }
@@ -190,6 +191,8 @@ const handleSubmit = async () => {
       ));
     }
 
+    Swal.fire({ title: 'Thành công!', text: 'Tạo dự án thành công!', icon: 'success', timer: 2000, showConfirmButton: false });
+
     // Kiểm tra quyền để điều hướng về đúng trang quản lý
     if (authStore.userRole === 'ADMIN') {
       router.push('/admin/projects');
@@ -197,7 +200,7 @@ const handleSubmit = async () => {
       router.push('/projects');
     }
   } catch (error) {
-    alert("Lỗi: " + (error.response?.data?.message || "Không thể tạo dự án"));
+    Swal.fire('Lỗi', error.response?.data?.message || "Không thể tạo dự án", 'error');
   } finally {
     loading.value = false;
   }
