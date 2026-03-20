@@ -110,18 +110,18 @@ const canChangeStatus = computed(() => {
     // Manager hệ thống có quyền thay đổi nếu nằm trong dự án
     if (authStore.userRole === 'MANAGER') {
         if (project) {
-            return project.ownerId === uid || project.memberIds?.includes(uid)
+            return project.ownerId == uid || project.memberIds?.some(id => id == uid)
         }
         return false;
     }
     
     // Check quyền Project Owner
     if (project) {
-        if (project.ownerId === uid) return true
+        if (project.ownerId == uid) return true
     }
 
     // Người được giao việc (Assignee) có quyền thay đổi
-    return task.value?.assigneeId === authStore.user?.id
+    return task.value?.assigneeId == authStore.user?.id
 })
 
 // Helper lấy tên dự án

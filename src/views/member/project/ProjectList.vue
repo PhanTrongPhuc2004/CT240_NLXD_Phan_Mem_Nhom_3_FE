@@ -63,8 +63,8 @@ const projects = computed(() => {
 
     // 3. Dự án Private: Chỉ hiện nếu là Owner hoặc Member
     const currentUserId = authStore.user?.id;
-    const isOwner = p.ownerId === currentUserId;
-    const isMember = p.memberIds?.includes(currentUserId);
+    const isOwner = p.ownerId == currentUserId;
+    const isMember = p.memberIds?.some(id => id == currentUserId);
 
     return isOwner || isMember;
   });

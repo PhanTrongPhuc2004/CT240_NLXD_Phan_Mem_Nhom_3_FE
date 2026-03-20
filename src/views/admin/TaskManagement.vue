@@ -204,7 +204,7 @@ const canManageTaskItem = (item) => {
     const project = projects.value.find(p => p.id === realItem.projectId);
     if (!project) return false;
     
-    return project.ownerId === currentUserId || project.memberIds?.includes(currentUserId);
+    return project.ownerId == currentUserId || project.memberIds?.some(id => id == currentUserId);
 }
 
 const router = useRouter()
@@ -234,8 +234,8 @@ const projectsForDropdown = computed(() => {
         const currentUserId = authStore.user?.id;
         if (!currentUserId) return [];
         return projects.value.filter(p => 
-            p.ownerId === currentUserId ||
-            p.memberIds?.includes(currentUserId)
+            p.ownerId == currentUserId ||
+            p.memberIds?.some(id => id == currentUserId)
         );
     }
     return projects.value;
@@ -261,8 +261,8 @@ const projectUsers = computed(() => {
     // 1. Nếu chưa chọn dự án, trả về mảng rỗng
     if (!editedItem.value.projectId) return [];
 
-    // 2. Tìm dự án đã chọn
-    const project = projects.value.find(p => p.id === editedItem.value.projectId)
+    // 2. Tìm dự án đã chọn (Dùng == để tránh lỗi khác kiểu dữ liệu String/Number)
+    const project = projects.value.find(p => p.id == editedItem.value.projectId)
     if (!project) return [];
 
     // 3. Lấy ID của tất cả thành viên trong dự án
@@ -271,13 +271,8 @@ const projectUsers = computed(() => {
     // 4. Lọc danh sách user toàn hệ thống để lấy object user tương ứng
     // và loại bỏ những user có vai trò là ADMIN.
     return users.value.filter(user => {
-        if (!memberIds.includes(user.id)) return false;
+        if (!memberIds.some(id => id == user.id)) return false;
         if (user.role === 'ADMIN') return false; // Không ai được giao việc cho Admin
-        
-        // Thêm điều kiện: Manager hệ thống không được giao việc cho Manager hệ thống khác
-        if (authStore.userRole === 'MANAGER' && user.role === 'MANAGER' && user.id !== authStore.user?.id) {
-            return false;
-        }
         
         return true;
     });
@@ -316,11 +311,11 @@ const getTaskPriorityVN = (priority) => {
 
 // Hàm helper để lấy tên từ ID
 const getProjectName = (id) => {
-    const project = projects.value.find(p => p.id === id)
+    const project = projects.value.find(p => p.id == id)
     return project ? project.name : id // Nếu không tìm thấy thì hiện ID
 }
 const getAssigneeName = (id) => {
-    const user = users.value.find(u => u.id === id)
+    const user = users.value.find(u => u.id == id)
     return user ? user.fullName : (id || 'Chưa giao')
 }
 
@@ -420,10 +415,10 @@ async function save() {
 
     // 3. Auto-add Member (Admin/Manager only)
     if (canManageTasks.value && payload.projectId && payload.assigneeId) {
-        const project = projects.value.find(p => p.id === payload.projectId)
+        const project = projects.value.find(p => p.id == payload.projectId)
         if (project) {
             const members = [project.ownerId, ...(project.memberIds || [])]
-            if (!members.includes(payload.assigneeId)) {
+            if (!members.some(id => id == payload.assigneeId)) {
                 try {
                     await projectApi.assignMember(payload.projectId, { userId: payload.assigneeId })
                     await projectStore.fetchAllSystem()
@@ -437,12 +432,15 @@ async function save() {
 
     // 4. Create/Update Task
     try {
+        let isCreate = false;
         if (editedIndex.value > -1) {
             await taskStore.update(payload.id, payload) // Gộp update, không cần gọi updateStatus riêng
         } else {
+            isCreate = true;
             await taskStore.create(payload)
         }
         close()
+        Swal.fire({ title: 'Thành công!', text: isCreate ? 'Thêm công việc thành công!' : 'Cập nhật công việc thành công!', icon: 'success', timer: 2000, showConfirmButton: false })
     } catch (error) {
         console.error('Save task error:', error)
         let msg = 'Lỗi lưu dữ liệu'
@@ -484,6 +482,13 @@ onMounted(async () => {
   letter-spacing: 0.5px;
 }
 
+.manage-gradient-btn {
+  background: linear-gradient(45deg, #8E24AA, #BA68C8) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
 @keyframes pulse-primary {
   0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); }
   70% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
@@ -502,5 +507,15 @@ onMounted(async () => {
 
 .pulse-danger {
   animation: pulse-danger 2s infinite;
+}
+
+@keyframes pulse-manage {
+  0% { box-shadow: 0 0 0 0 rgba(142, 36, 170, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(142, 36, 170, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(142, 36, 170, 0); }
+}
+
+.pulse-manage {
+  animation: pulse-manage 2s infinite;
 }
 </style>

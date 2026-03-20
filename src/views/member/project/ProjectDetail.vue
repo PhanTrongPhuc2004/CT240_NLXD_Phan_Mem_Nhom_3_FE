@@ -300,7 +300,7 @@
             <v-card class="pa-4" elevation="1">
               <div class="d-flex justify-space-between align-center mb-4">
                 <h3 class="text-h6">Thành viên dự án ({{ project?.memberIds?.length || 0 }})</h3>
-                <v-btn v-if="canEditProject" class="primary-gradient-btn pulse-primary font-weight-bold px-4" rounded="pill" prepend-icon="mdi-account-plus"
+                <v-btn v-if="isAdmin || isOwner" class="primary-gradient-btn pulse-primary font-weight-bold px-4" rounded="pill" prepend-icon="mdi-account-plus"
                   @click="dialogAddMember = true">
                   Thêm thành viên
                 </v-btn>
@@ -330,7 +330,7 @@
                     <span v-if="userId === currentUserId" class="text-caption text-primary font-weight-bold mr-3 font-italic">(Bạn)</span>
 
                     <v-btn 
-                      v-if="canEditProject" 
+                      v-if="isAdmin || isOwner" 
                       icon="mdi-account-remove" 
                       color="error" 
                       variant="text" 
@@ -545,11 +545,11 @@ const editForm = reactive({
 
 // Computed Properties
 const currentUserId = computed(() => authStore.user?.id);
-const isActualOwner = computed(() => project.value?.ownerId === currentUserId.value);
+const isActualOwner = computed(() => project.value?.ownerId == currentUserId.value);
 const isOwner = computed(() => isActualOwner.value);
 
-const isMember = computed(() => project.value?.memberIds?.includes(currentUserId.value));
-const isPending = computed(() => project.value?.pendingMemberIds?.includes(currentUserId.value));
+const isMember = computed(() => project.value?.memberIds?.some(id => id == currentUserId.value));
+const isPending = computed(() => project.value?.pendingMemberIds?.some(id => id == currentUserId.value));
 
 const isAdmin = computed(() => authStore.userRole === 'ADMIN');
 const isSystemManager = computed(() => authStore.userRole === 'MANAGER');
@@ -574,7 +574,7 @@ const canUpdateStatus = (task) => {
   // Admin/Manager hệ thống luôn có quyền (đã check ở canManageTasks trên), nên không cần chặn nữa
 
   // Member chỉ được sửa task được giao cho mình
-  return realTask.assigneeId === currentUserId.value;
+  return realTask.assigneeId == currentUserId.value;
 };
 
 const dialogTitle = computed(() => {
@@ -774,8 +774,8 @@ const loadProjectData = async () => {
     // Kiểm tra quyền truy cập logic Frontend: Nếu Private thì chỉ Owner, Admin hoặc Member mới được xem
     if (p.visibility === 'private') {
       const uid = authStore.user?.id;
-      const isOwner = p.ownerId === uid;
-      const isMember = p.memberIds?.includes(uid);
+      const isOwner = p.ownerId == uid;
+      const isMember = p.memberIds?.some(id => id == uid);
       // isAdmin đã bao gồm logic Manager ở trên
 
       // Admin và Manager hệ thống được quyền xem (View Only)
@@ -1086,13 +1086,16 @@ const saveTask = async () => {
   }
 
   try {
+    let isCreate = false;
     if (editedTask.value.id) {
       await taskStore.update(editedTask.value.id, payload);
     } else {
+      isCreate = true;
       await taskStore.create(payload);
     }
     await fetchBackendActivities();
     closeTaskDialog();
+    Swal.fire({ title: 'Thành công!', text: isCreate ? 'Thêm công việc thành công!' : 'Cập nhật công việc thành công!', icon: 'success', timer: 2000, showConfirmButton: false });
     // taskStore.fetchAll() được gọi tự động hoặc reactive update
   } catch (err) {
     console.error("Lỗi saveTask:", err);
@@ -1204,6 +1207,13 @@ onMounted(() => {
   letter-spacing: 0.5px;
 }
 
+.manage-gradient-btn {
+  background: linear-gradient(45deg, #8E24AA, #BA68C8) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
 @keyframes pulse-primary {
   0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); }
   70% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
@@ -1242,5 +1252,15 @@ onMounted(() => {
 
 .pulse-success {
   animation: pulse-success 2s infinite;
+}
+
+@keyframes pulse-manage {
+  0% { box-shadow: 0 0 0 0 rgba(142, 36, 170, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(142, 36, 170, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(142, 36, 170, 0); }
+}
+
+.pulse-manage {
+  animation: pulse-manage 2s infinite;
 }
 </style>

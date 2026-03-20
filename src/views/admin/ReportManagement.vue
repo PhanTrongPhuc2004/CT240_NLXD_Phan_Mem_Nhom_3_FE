@@ -146,7 +146,7 @@
 
               <!-- button -->
               <template v-slot:append>
-                <v-btn variant="outlined" size="small" class="text-none btn-view font-weight-bold" rounded="pill" @click="goToTaskReport(task.projectId)"> Xem </v-btn>
+                <v-btn size="small" class="dark-gradient-btn pulse-dark text-none font-weight-bold px-4" rounded="pill" @click="goToTaskReport(task.projectId)"> Xem </v-btn>
               </template>
             </v-list-item>
 

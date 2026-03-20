@@ -41,8 +41,8 @@ const myProjects = computed(() => {
   const userId = authStore.user?.id;
   if (!userId) return [];
   return projectStore.projects.filter(p => {
-    const isOwner = p.ownerId === userId;
-    const isMember = p.memberIds?.includes(userId);
+    const isOwner = p.ownerId == userId;
+    const isMember = p.memberIds?.some(id => id == userId);
     // Hiển thị nếu là Owner hoặc Member
     return isOwner || isMember;
   });

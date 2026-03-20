@@ -155,3 +155,22 @@ onMounted(() => {
     projectStore.fetchAll()
 })
 </script>
+
+<style scoped>
+.primary-gradient-btn {
+  background: linear-gradient(45deg, #1976D2, #42A5F5) !important;
+  color: white !important;
+  text-transform: none !important;
+  letter-spacing: 0.5px;
+}
+
+@keyframes pulse-primary {
+  0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0); }
+}
+
+.pulse-primary {
+  animation: pulse-primary 2s infinite;
+}
+</style>

@@ -125,9 +125,9 @@ const loading = ref(false);
 
 const currentUserId = computed(() => authStore.user?.id);
 
-const isOwner = computed(() => props.project.ownerId === currentUserId.value);
-const isMember = computed(() => props.project.memberIds?.includes(currentUserId.value));
-const isPending = computed(() => props.project.pendingMemberIds?.includes(currentUserId.value));
+const isOwner = computed(() => props.project.ownerId == currentUserId.value);
+const isMember = computed(() => props.project.memberIds?.some(id => id == currentUserId.value));
+const isPending = computed(() => props.project.pendingMemberIds?.some(id => id == currentUserId.value));
 
 const getStatusColor = (status) => {
   const map = {
