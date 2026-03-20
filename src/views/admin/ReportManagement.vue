@@ -466,7 +466,9 @@ const fetchStatistics = async () => {
 
     status.value = [
       { name: 'Cần làm', count: tTodo, percent: total.value ? Math.round((tTodo / total.value) * 100) : 0 },
-      { name: 'Đang 
+      { name: 'Đang làm', count: tInProgress, percent: total.value ? Math.round((tInProgress / total.value) * 100) : 0 },
+      { name: 'Hoàn thành', count: tDone, percent: total.value ? Math.round((tDone / total.value) * 100) : 0 },
+      { name: 'Đã hủy', count: tCancelled, percent: total.value ? Math.round((tCancelled / total.value) * 100) : 0 },
     ]
 
     const now = new Date()
@@ -489,6 +491,7 @@ const fetchStatistics = async () => {
         data: [tTodo, tInProgress, tDone, tCancelled]
       }
     })
+  } catch (error) {
     console.error('Error fetching statistics:', error)
     // Fallback to update charts with current placeholder data if API fails
     updateCharts({})
@@ -519,7 +522,8 @@ const updateCharts = (data) => {
         datasets: [{
           data: data.statusChart?.data || status.value.map(s => s.count),
           backgroundColor: ['#9e9e9e', '#2196f3', '#4caf50', '#f44336'],
-          bor
+          borderWidth: 1
+        }]
       },
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '70%',
