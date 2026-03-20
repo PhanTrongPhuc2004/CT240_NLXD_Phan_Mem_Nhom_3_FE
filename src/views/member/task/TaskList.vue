@@ -58,6 +58,7 @@ import { useRouter } from 'vue-router'
 import { useTaskStore } from '@/stores/task'
 import { useProjectStore } from '@/stores/project'
 import { useAuthStore } from '@/stores/auth'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const taskStore = useTaskStore()
@@ -121,7 +122,7 @@ const handleUpdateStatus = async (item, newStatus) => {
         const msg = err.response?.status === 403 
             ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
             : (err.response?.data?.message || err.message)
-        alert("Lỗi cập nhật trạng thái: " + msg)
+        Swal.fire('Lỗi', "Lỗi cập nhật trạng thái: " + msg, 'error')
     }
 }
 

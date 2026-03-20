@@ -74,6 +74,7 @@ import { useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import { useUserStore } from '@/stores/user'; // SỬA: Dùng store thay vì gọi api trực tiếp
+import Swal from 'sweetalert2';
 
 const router = useRouter();
 const projectStore = useProjectStore();
@@ -155,7 +156,7 @@ const deleteProjectConfirm = async () => {
       await projectStore.delete(projectToDelete.value.id);
       closeDelete(); // Chỉ đóng dialog khi xóa thành công
     } catch (error) {
-      alert("Lỗi khi xóa dự án: " + (error.response?.data?.message || error.message || "Bạn không có quyền xóa dự án này."));
+      Swal.fire('Lỗi', "Lỗi khi xóa dự án: " + (error.response?.data?.message || error.message || "Bạn không có quyền xóa dự án này."), 'error');
     }
   }
 };

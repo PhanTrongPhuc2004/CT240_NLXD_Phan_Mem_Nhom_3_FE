@@ -170,6 +170,7 @@ import { useProjectStore } from '@/stores/project'
 import { useUserStore } from '@/stores/user'
 import { projectApi } from '@/api/projectApi'
 import { useAuthStore } from '@/stores/auth'
+import Swal from 'sweetalert2'
 
 const taskStore = useTaskStore()
 // SỬA: Dùng allSystemTasks để hiển thị tất cả công việc trong hệ thống
@@ -300,7 +301,7 @@ const handleUpdateStatus = async (item, newStatus) => {
         const msg = err.response?.status === 403 
             ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
             : (err.response?.data?.message || err.message)
-        alert("Lỗi cập nhật trạng thái: " + msg)
+        Swal.fire('Lỗi', "Lỗi cập nhật trạng thái: " + msg, 'error')
     }
 }
 
@@ -348,9 +349,18 @@ async function save() {
     const payload = { ...editedItem.value }
 
     // 1. Validate
-    if (!canManageTasks.value) return alert('Bạn không có quyền thực hiện hành động này.')
-    if (!payload.title?.trim()) return alert('Vui lòng nhập tiêu đề công việc')
-    if (!payload.projectId) return alert('Vui lòng chọn dự án')
+    if (!canManageTasks.value) {
+        Swal.fire('Lỗi', 'Bạn không có quyền thực hiện hành động này.', 'error')
+        return
+    }
+    if (!payload.title?.trim()) {
+        Swal.fire('Cảnh báo', 'Vui lòng nhập tiêu đề công việc', 'warning')
+        return
+    }
+    if (!payload.projectId) {
+        Swal.fire('Cảnh báo', 'Vui lòng chọn dự án', 'warning')
+        return
+    }
 
     // 2. Format Data
     if (editedIndex.value === -1) delete payload.id
@@ -368,7 +378,8 @@ async function save() {
                     await projectApi.assignMember(payload.projectId, { userId: payload.assigneeId })
                     await projectStore.fetchAllSystem()
                 } catch (err) {
-                    return alert('Lỗi thêm thành viên vào dự án: ' + (err.response?.data || err.message))
+                Swal.fire('Lỗi', 'Lỗi thêm thành viên vào dự án: ' + (err.response?.data || err.message), 'error')
+                return
                 }
             }
         }
@@ -394,7 +405,7 @@ async function save() {
                 msg = (typeof data === 'object') ? (data.message || JSON.stringify(data)) : data
             }
         }
-        alert('Lưu thất bại: ' + msg)
+    Swal.fire('Lỗi', 'Lưu thất bại: ' + msg, 'error')
     }
 }
 

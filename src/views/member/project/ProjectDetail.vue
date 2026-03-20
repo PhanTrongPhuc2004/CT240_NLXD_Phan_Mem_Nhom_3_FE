@@ -524,6 +524,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useTaskStore } from '@/stores/task';
 import { projectApi } from '@/api/projectApi';
 import api from '@/api/index';
+import Swal from 'sweetalert2';
 import UserAvatarName from '@/components/UserAvatarName.vue';
 
 const route = useRoute();
@@ -838,16 +839,25 @@ const updateProjectInfo = async () => {
     };
     await projectStore.update(project.value.id, payload);
     await loadProjectData();
-    alert("Cập nhật thành công!");
+    Swal.fire({ title: 'Thành công!', text: 'Cập nhật thành công!', icon: 'success', timer: 2000, showConfirmButton: false });
   } catch (err) {
-    alert("Lỗi cập nhật: " + err.message);
+    Swal.fire('Lỗi', "Lỗi cập nhật: " + err.message, 'error');
   } finally {
     updating.value = false;
   }
 };
 
 const deleteProject = async () => {
-  if (!confirm("CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn dự án này?")) return;
+  const result = await Swal.fire({
+    title: 'Xác nhận xóa',
+    text: "CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn dự án này?",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    confirmButtonText: 'Xóa',
+    cancelButtonText: 'Hủy'
+  });
+  if (!result.isConfirmed) return;
   
   try {
     await projectStore.delete(project.value.id);
@@ -858,17 +868,18 @@ const deleteProject = async () => {
       router.replace({ name: 'MemberProjects' });
     }
   } catch (err) {
-    alert(`Lỗi xóa dự án (ID: ${project.value.id}): ` + (err.response?.data?.message || err.message || "Backend từ chối quyền xóa (403)."));
+    Swal.fire('Lỗi', `Lỗi xóa dự án: ` + (err.response?.data?.message || err.message || "Backend từ chối quyền xóa (403)."), 'error');
   }
 };
 
 const handleLeaveProject = async () => {
-  if (!confirm("Bạn có chắc muốn rời khỏi dự án này?")) return;
+  const result = await Swal.fire({ title: 'Xác nhận', text: "Bạn có chắc muốn rời khỏi dự án này?", icon: 'question', showCancelButton: true, confirmButtonText: 'Rời dự án', cancelButtonText: 'Hủy' });
+  if (!result.isConfirmed) return;
   try {
     await projectStore.leaveProject(project.value.id);
     router.push({ name: 'MemberProjects' });
   } catch (err) {
-    alert("Lỗi: " + err.message);
+    Swal.fire('Lỗi', err.message, 'error');
   }
 };
 
@@ -876,20 +887,21 @@ const handleJoinProject = async () => {
   try {
     await projectStore.joinProject(project.value.id);
     await loadProjectData();
-    alert("Đã gửi yêu cầu tham gia!");
+    Swal.fire('Thành công', 'Đã gửi yêu cầu tham gia!', 'success');
   } catch (err) {
-    alert("Lỗi: " + err.message);
+    Swal.fire('Lỗi', err.message, 'error');
   }
 };
 
 const handleCancelRequest = async () => {
-  if (!confirm("Bạn muốn hủy yêu cầu tham gia dự án này?")) return;
+  const result = await Swal.fire({ title: 'Xác nhận', text: "Bạn muốn hủy yêu cầu tham gia dự án này?", icon: 'question', showCancelButton: true, confirmButtonText: 'Đồng ý', cancelButtonText: 'Hủy' });
+  if (!result.isConfirmed) return;
   try {
     await projectApi.cancelJoinRequest(project.value.id); // Gọi endpoint mới
     await loadProjectData();
-    alert("Đã hủy yêu cầu.");
+    Swal.fire('Thành công', 'Đã hủy yêu cầu.', 'success');
   } catch (err) {
-    alert("Lỗi: " + (err.response?.data || err.message));
+    Swal.fire('Lỗi', err.response?.data || err.message, 'error');
   }
 };
 
@@ -897,19 +909,20 @@ const approveJoin = async (userId) => {
   try {
     await projectApi.approveJoin(project.value.id, { userId });
     await loadProjectData();
-    alert("Đã duyệt thành viên!");
+    Swal.fire({ title: 'Thành công', text: 'Đã duyệt thành viên!', icon: 'success', timer: 2000, showConfirmButton: false });
   } catch (err) {
-    alert("Lỗi: " + err.message);
+    Swal.fire('Lỗi', err.message, 'error');
   }
 };
 
 const rejectJoin = async (userId) => {
-  if (!confirm("Từ chối yêu cầu này?")) return;
+  const result = await Swal.fire({ title: 'Xác nhận', text: "Từ chối yêu cầu này?", icon: 'warning', showCancelButton: true, confirmButtonText: 'Từ chối', cancelButtonText: 'Hủy' });
+  if (!result.isConfirmed) return;
   try {
     await projectApi.rejectJoin(project.value.id, { userId });
     await loadProjectData();
   } catch (err) {
-    alert("Lỗi: " + err.message);
+    Swal.fire('Lỗi', err.message, 'error');
   }
 };
 
@@ -919,14 +932,21 @@ const onSearchUser = async (keyword) => {
     return;
   }
 
+  // Lấy danh sách ID các thành viên hiện tại (để lọc khỏi kết quả tìm kiếm)
+  const currentMemberIds = [
+    project.value?.ownerId,
+    ...(project.value?.managerIds || []),
+    ...(project.value?.memberIds || []),
+    ...(project.value?.pendingMemberIds || [])
+  ].filter(Boolean);
+
   // WORKAROUND: Nếu là Admin và đã tải allUsers, thực hiện tìm kiếm client-side
   // Điều này giúp tránh gọi API đang bị lỗi Backend Routing (/users/search bị nhầm là /users/{id})
   if ((authStore.userRole === 'ADMIN' || authStore.userRole === 'MANAGER') && allUsers.value.length > 0) {
     const k = keyword.toLowerCase();
     searchResults.value = allUsers.value.filter(u => 
-      (u.fullName?.toLowerCase().includes(k)) ||
-      (u.email?.toLowerCase().includes(k)) ||
-      (u.username?.toLowerCase().includes(k))
+      (!currentMemberIds.includes(u.id)) &&
+      ((u.fullName?.toLowerCase().includes(k)) || (u.email?.toLowerCase().includes(k)) || (u.username?.toLowerCase().includes(k)))
     );
     return;
   }
@@ -937,7 +957,8 @@ const onSearchUser = async (keyword) => {
     searching.value = true;
     try {
       const res = await api.get('/users/search', { params: { keyword } });
-      searchResults.value = res.data;
+      // Loại bỏ những người đã ở trong dự án để tránh thêm trùng
+      searchResults.value = res.data.filter(u => !currentMemberIds.includes(u.id));
     } catch (err) {
       console.error("Lỗi tìm kiếm:", err);
       searchResults.value = [];
@@ -961,45 +982,50 @@ const addMemberSubmit = async () => {
       await projectApi.assignMember(project.value.id, payload);
     }
     await loadProjectData();
-    dialogAddMember.value = false;
-    newMemberId.value = null;
-    alert("Thêm thành viên thành công!");
+    Swal.fire({ title: 'Thành công', text: 'Thêm thành viên thành công!', icon: 'success', timer: 2000, showConfirmButton: false });
   } catch (err) {
-    alert("Lỗi thêm thành viên: " + (err.response?.data || err.message));
+    Swal.fire('Lỗi', "Lỗi thêm thành viên: " + (err.response?.data || err.message), 'error');
   } finally {
     addingMember.value = false;
+    // Đảm bảo luôn đóng form và xóa dữ liệu cũ cho dù thành công hay lỗi
+    dialogAddMember.value = false;
+    newMemberId.value = null;
+    newMemberRole.value = 'member';
   }
 };
 
 const removeMember = async (userId) => {
-  if (!confirm("Xóa thành viên này khỏi dự án?")) return;
+  const result = await Swal.fire({ title: 'Xác nhận', text: "Xóa thành viên này khỏi dự án?", icon: 'warning', showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy' });
+  if (!result.isConfirmed) return;
   try {
     await projectApi.removeMember(project.value.id, userId);
     await loadProjectData();
   } catch (err) {
-    alert("Lỗi: " + err.message);
+    Swal.fire('Lỗi', err.message, 'error');
   }
 };
 
 const removeManager = async (userId) => {
-  if (!confirm("Chỉ xóa quyền quản lý của thành viên này?")) return;
+  const result = await Swal.fire({ title: 'Xác nhận', text: "Chỉ xóa quyền quản lý của thành viên này?", icon: 'warning', showCancelButton: true, confirmButtonText: 'Xóa quyền', cancelButtonText: 'Hủy' });
+  if (!result.isConfirmed) return;
   try {
     await projectApi.removeManager(project.value.id, userId);
     await loadProjectData();
   } catch (err) {
-    alert("Lỗi: " + err.message);
+    Swal.fire('Lỗi', err.message, 'error');
   }
 };
 
 const promoteToManager = async (userId) => {
-  if (!confirm("Thăng cấp thành viên này thành Quản lý?")) return;
+  const result = await Swal.fire({ title: 'Xác nhận', text: "Thăng cấp thành viên này thành Quản lý?", icon: 'question', showCancelButton: true, confirmButtonText: 'Thăng cấp', cancelButtonText: 'Hủy' });
+  if (!result.isConfirmed) return;
   try {
     const payload = { userId: userId };
     await projectApi.assignManager(project.value.id, payload);
     await loadProjectData();
-    alert("Thăng cấp thành công!");
+    Swal.fire({ title: 'Thành công', text: 'Thăng cấp thành công!', icon: 'success', timer: 2000, showConfirmButton: false });
   } catch (err) {
-    alert("Lỗi khi thăng cấp: " + (err.response?.data || err.message));
+    Swal.fire('Lỗi', "Lỗi khi thăng cấp: " + (err.response?.data || err.message), 'error');
   }
 };
 
@@ -1010,7 +1036,7 @@ const goToTaskDetail = (task) => {
 
 const openTaskDialog = (item = null) => {
   if (!item && !canManageTasks.value) {
-    alert("Bạn không có quyền tạo công việc mới.");
+    Swal.fire('Lỗi', 'Bạn không có quyền tạo công việc mới.', 'error');
     return;
   }
 
@@ -1034,7 +1060,7 @@ const saveTask = async () => {
   if (!canManageTasks.value) return;
   
   if (!editedTask.value.title) {
-    alert("Vui lòng nhập tiêu đề công việc");
+    Swal.fire('Cảnh báo', 'Vui lòng nhập tiêu đề công việc', 'warning');
     return;
   }
 
@@ -1046,7 +1072,7 @@ const saveTask = async () => {
 
   // Kiểm tra projectId bắt buộc
   if (!payload.projectId) {
-    alert("Lỗi: Không xác định được dự án (Missing projectId)");
+    Swal.fire('Lỗi', 'Không xác định được dự án (Missing projectId)', 'error');
     return;
   }
 
@@ -1071,7 +1097,7 @@ const saveTask = async () => {
     // taskStore.fetchAll() được gọi tự động hoặc reactive update
   } catch (err) {
     console.error("Lỗi saveTask:", err);
-    alert("Lỗi lưu công việc: " + (err.response?.data?.message || err.response?.data || err.message));
+    Swal.fire('Lỗi', "Lỗi lưu công việc: " + (err.response?.data?.message || err.response?.data || err.message), 'error');
   }
 };
 
@@ -1089,21 +1115,23 @@ const updateTaskStatus = async (task, newStatus) => {
     const msg = err.response?.status === 403 
       ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
       : (err.response?.data?.message || err.message);
-    alert("Lỗi cập nhật trạng thái: " + msg);
+    Swal.fire('Lỗi', "Lỗi cập nhật trạng thái: " + msg, 'error');
   }
 };
 
 const deleteTaskItem = async (item) => {
   const realItem = item.raw || item;
   if (!canManageTasks.value) {
-    alert("Bạn không có quyền xóa công việc này.");
+    Swal.fire('Lỗi', 'Bạn không có quyền xóa công việc này.', 'error');
     return;
   }
-  if (!confirm("Bạn có chắc muốn xóa công việc này?")) return;
+  const result = await Swal.fire({ title: 'Xác nhận', text: "Bạn có chắc muốn xóa công việc này?", icon: 'warning', showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: 'Hủy' });
+  if (!result.isConfirmed) return;
+
   try {
     await taskStore.delete(realItem.id);
   } catch (err) {
-    alert("Lỗi xóa: " + err.message);
+    Swal.fire('Lỗi', err.message, 'error');
   }
 };
 
