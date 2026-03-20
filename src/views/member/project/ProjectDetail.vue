@@ -300,7 +300,7 @@
                 <!-- Owner -->
                 <v-list-item class="mb-2 rounded border" :class="{ 'bg-blue-lighten-5': project?.ownerId === currentUserId }">
                   <template v-slot:prepend>
-                    <v-chip color="purple" size="small" label class="mr-3 font-weight-bold"> Chủ sở hữu</v-chip>
+                    <v-chip color="red" variant="outlined" size="small" label class="mr-3 font-weight-bold bg-white" style="min-width: 110px; justify-content: center;">Chủ sở hữu</v-chip>
                     <UserAvatarName :user-id="project?.ownerId" />
                   </template>
                   <template v-slot:append>
@@ -311,7 +311,7 @@
                 <!-- Các thành viên còn lại (Bắt role động) -->
                 <v-list-item v-for="userId in allProjectMembersExcludingOwner" :key="userId" class="mb-2 rounded border" :class="{ 'bg-blue-lighten-5': userId === currentUserId }">
                   <template v-slot:prepend>
-                    <v-chip :color="getMemberRoleDisplay(userId).color" size="small" label :variant="getMemberRoleDisplay(userId).variant" class="mr-3 font-weight-bold">
+                    <v-chip :color="getMemberRoleDisplay(userId).color" size="small" label :variant="getMemberRoleDisplay(userId).variant" :class="['mr-3 font-weight-bold', getMemberRoleDisplay(userId).bgClass]" style="min-width: 110px; justify-content: center;">
                       {{ getMemberRoleDisplay(userId).text }}
                     </v-chip>
                     <UserAvatarName :user-id="userId" />
@@ -595,12 +595,12 @@ const getMemberRoleDisplay = (userId) => {
   const systemRole = user?.role; // 'ADMIN', 'MANAGER', 'MEMBER'
 
   if (systemRole === 'MANAGER') {
-    return { text: ' Quản trị viên', color: 'blue', variant: 'elevated' };
+    return { text: 'Quản trị viên', color: 'blue', variant: 'outlined', bgClass: 'bg-white' };
   }
   if (systemRole === 'ADMIN') {
-    return { text: 'Admin ', color: 'red', variant: 'elevated' };
+    return { text: 'Admin', color: 'red', variant: 'elevated', bgClass: '' };
   }
-  return { text: 'Thành viên', color: 'grey-darken-1', variant: 'outlined' };
+  return { text: 'Thành viên', color: 'grey-darken-1', variant: 'outlined', bgClass: 'bg-white' };
 };
 
 // Lọc danh sách Task thuộc dự án này
