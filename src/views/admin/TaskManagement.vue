@@ -222,12 +222,6 @@ const headers = [
 ]
 
 const activeTab = ref('all')
-const displayTasks = computed(() => {
-    if (activeTab.value === 'assigned') {
-        return taskStore.tasks.filter(t => t.assigneeId === authStore.user?.id)
-    }
-    return taskStore.tasks
-})
 
 const editedIndex = ref(-1)
 const defaultItem = { id: '', title: '', description: '', projectId: '', assigneeId: '', priority: 'MEDIUM', status: 'TO_DO', deadline: null }
@@ -246,6 +240,21 @@ const projectsForDropdown = computed(() => {
     }
     return projects.value;
 });
+
+const displayTasks = computed(() => {
+    let currentTasks = taskStore.tasks;
+    
+    // Quản lý (Manager) chỉ thấy công việc thuộc các dự án mà họ tham gia
+    if (authStore.userRole === 'MANAGER') {
+        const validProjectIds = projectsForDropdown.value.map(p => p.id);
+        currentTasks = currentTasks.filter(t => validProjectIds.includes(t.projectId));
+    }
+
+    if (activeTab.value === 'assigned') {
+        return currentTasks.filter(t => t.assigneeId === authStore.user?.id);
+    }
+    return currentTasks;
+})
 
 // Computed: Lọc danh sách user chỉ hiển thị những người thuộc Project đã chọn
 const projectUsers = computed(() => {
