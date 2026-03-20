@@ -392,8 +392,6 @@ const fromDate = ref('')
 const toDate = ref('')
 
 const status = ref([
-  { name: 'To Do', count: 10, percent: 13 },
-  { name: 'Đang tiến hành', count: 15, percent: 20 },
   { name: 'Hoàn thành', count: 45, percent: 60 },
   { name: 'Đã hủy', count: 5, percent: 7 },
 ])
@@ -467,10 +465,8 @@ const fetchStatistics = async () => {
     const tCancelled = data.filter(t => t.status === 'CANCELLED').length
 
     status.value = [
-      { name: 'To Do', count: tTodo, percent: total.value ? Math.round((tTodo / total.value) * 100) : 0 },
-      { name: 'Đang tiến hành', count: tInProgress, percent: total.value ? Math.round((tInProgress / total.value) * 100) : 0 },
-      { name: 'Hoàn thành', count: tDone, percent: total.value ? Math.round((tDone / total.value) * 100) : 0 },
-      { name: 'Đã hủy', count: tCancelled, percent: total.value ? Math.round((tCancelled / total.value) * 100) : 0 },
+      { name: 'Cần làm', count: tTodo, percent: total.value ? Math.round((tTodo / total.value) * 100) : 0 },
+      { name: 'Đang 
     ]
 
     const now = new Date()
@@ -489,11 +485,10 @@ const fetchStatistics = async () => {
 
     updateCharts({
       statusChart: {
-        labels: ['To Do', 'Đang tiến hành', 'Hoàn thành', 'Đã hủy'],
+        labels: ['Cần làm', 'Đang làm', 'Hoàn thành', 'Đã hủy'],
         data: [tTodo, tInProgress, tDone, tCancelled]
       }
     })
-  } catch (error) {
     console.error('Error fetching statistics:', error)
     // Fallback to update charts with current placeholder data if API fails
     updateCharts({})
@@ -520,12 +515,11 @@ const updateCharts = (data) => {
     statusChartInstance = new Chart(statusCanvas, {
       type: 'doughnut',
       data: {
-        labels: data.statusChart?.labels || ['To Do', 'Đang tiến hành', 'Hoàn thành', 'Đã hủy'],
+        labels: data.statusChart?.labels || ['Cần làm', 'Đang làm', 'Hoàn thành', 'Đã hủy'],
         datasets: [{
           data: data.statusChart?.data || status.value.map(s => s.count),
           backgroundColor: ['#9e9e9e', '#2196f3', '#4caf50', '#f44336'],
-          borderWidth: 0, spacing: 4, borderRadius: 6
-        }]
+          bor
       },
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '70%',
