@@ -2,17 +2,24 @@
     <v-container>
         <v-data-table
             :headers="headers"
-            :items="tasks"
+            :items="displayTasks"
             :loading="loading"
             class="elevation-1"
+            :no-data-text="activeTab === 'assigned' ? 'Bạn chưa được giao công việc nào' : 'Không có công việc nào'"
         >
             <template v-slot:top>
                 <v-toolbar flat>
                     <v-toolbar-title>Quản lý Công việc (Tasks)</v-toolbar-title>
                     <v-divider class="mx-4" inset vertical></v-divider>
+                    
+                    <v-tabs v-model="activeTab" color="primary">
+                        <v-tab value="all">Tất cả</v-tab>
+                        <v-tab value="assigned">Của tôi</v-tab>
+                    </v-tabs>
+
                     <v-spacer></v-spacer>
                     <v-dialog v-model="dialog" max-width="700px">
-                        <template v-slot:activator="{ props }" v-if="canCreate">
+                        <template v-slot:activator="{ props }" v-if="canManageTasks">
                             <v-btn color="primary" dark class="mb-2" v-bind="props">
                                 Thêm công việc
                             </v-btn>
@@ -26,20 +33,20 @@
                                 <v-container>
                                     <v-row>
                                         <v-col cols="12">
-                                            <v-text-field v-model="editedItem.title" label="Tiêu đề công việc" required :readonly="!canCreate"></v-text-field>
+                                            <v-text-field v-model="editedItem.title" label="Tiêu đề công việc" required :readonly="!canManageTasks"></v-text-field>
                                         </v-col>
                                         <v-col cols="12">
-                                            <v-textarea v-model="editedItem.description" label="Mô tả" rows="3" :readonly="!canCreate"></v-textarea>
+                                            <v-textarea v-model="editedItem.description" label="Mô tả" rows="3" :readonly="!canManageTasks"></v-textarea>
                                         </v-col>
                                         <v-col cols="12" sm="6">
                                             <v-autocomplete
                                                 v-model="editedItem.projectId"
-                                                :items="projects"
+                                                :items="projectsForDropdown"
                                                 item-title="name"
                                                 item-value="id"
                                                 label="Chọn Dự án"
                                                 clearable
-                                                :readonly="!canCreate"
+                                                :readonly="!canManageTasks"
                                                 @update:model-value="onProjectChange"
                                             ></v-autocomplete>
                                         </v-col>
@@ -53,7 +60,7 @@
                                                 :hint="!editedItem.projectId ? 'Vui lòng chọn dự án trước' : ''"
                                                 persistent-hint
                                                 clearable
-                                                :readonly="!canCreate"
+                                                :readonly="!canManageTasks"
                                             ></v-autocomplete>
                                         </v-col>
                                         <v-col cols="12" sm="6">
@@ -61,7 +68,7 @@
                                                 v-model="editedItem.priority"
                                                 :items="['LOW', 'MEDIUM', 'HIGH']"
                                                 label="Độ ưu tiên"
-                                                :readonly="!canCreate"
+                                                :readonly="!canManageTasks"
                                             ></v-select>
                                         </v-col>
                                         <v-col cols="12" sm="6">
@@ -69,10 +76,11 @@
                                                 v-model="editedItem.status"
                                                 :items="['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']"
                                                 label="Trạng thái"
+                                                :disabled="!canManageTasks"
                                             ></v-select>
                                         </v-col>
                                         <v-col cols="12" sm="6">
-                                            <v-text-field v-model="editedItem.deadline" label="Hạn chót (Deadline)" type="datetime-local" :readonly="!canCreate"></v-text-field>
+                                            <v-text-field v-model="editedItem.deadline" label="Hạn chót (Deadline)" type="datetime-local" :readonly="!canManageTasks"></v-text-field>
                                         </v-col>
                                     </v-row>
                                 </v-container>
@@ -80,8 +88,8 @@
 
                             <v-card-actions>
                                 <v-spacer></v-spacer>
-                                <v-btn color="blue-darken-1" variant="text" @click="close">Hủy</v-btn>
-                                <v-btn color="blue-darken-1" variant="text" @click="save">Lưu</v-btn>
+                                <v-btn color="blue-darken-1" variant="text" @click="close">{{ canManageTasks ? 'Hủy' : 'Đóng' }}</v-btn>
+                                <v-btn v-if="canManageTasks" color="blue-darken-1" variant="text" @click="save">Lưu</v-btn>
                             </v-card-actions>
                         </v-card>
                     </v-dialog>
@@ -101,9 +109,7 @@
             
             <!-- Custom hiển thị Tiêu đề (Click để xem chi tiết) -->
             <template v-slot:item.title="{ item }">
-                <a href="#" @click.prevent="goDetail(item)" class="text-decoration-none font-weight-bold text-primary">
-                    {{ item.title }}
-                </a>
+                {{ item.title }}
             </template>
 
             <!-- Custom hiển thị Tên Dự án -->
@@ -118,7 +124,22 @@
 
             <!-- Custom hiển thị Status -->
             <template v-slot:item.status="{ item }">
-                <v-chip :color="getStatusColor(item.status)" size="small">
+                <v-menu v-if="canManageTasks || item.assigneeId === authStore.user?.id" location="bottom">
+                    <template v-slot:activator="{ props }">
+                        <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small" class="cursor-pointer" style="min-width: 140px; justify-content: space-between;">
+                            {{ item.status }}
+                            <v-icon end size="small">mdi-chevron-down</v-icon>
+                        </v-chip>
+                    </template>
+                    <v-list density="compact">
+                        <v-list-item v-for="status in ['TO_DO', 'IN_PROGRESS', 'DONE', 'CANCELLED']" :key="status" :value="status" @click="handleUpdateStatus(item, status)">
+                            <v-list-item-title>
+                                <v-chip size="x-small" :color="getStatusColor(status)">{{ status }}</v-chip>
+                            </v-list-item-title>
+                        </v-list-item>
+                    </v-list>
+                </v-menu>
+                <v-chip v-else :color="getStatusColor(item.status)" size="small" style="min-width: 140px; justify-content: center;">
                     {{ item.status }}
                 </v-chip>
             </template>
@@ -131,8 +152,11 @@
             </template>
 
             <template v-slot:item.actions="{ item }">
-                <v-icon size="small" class="me-2" @click="editItem(item)">mdi-pencil</v-icon>
-                <v-icon size="small" @click="deleteItem(item)" v-if="canCreate">mdi-delete</v-icon>
+                <v-icon size="small" class="me-2" @click="goDetail(item)">mdi-eye</v-icon>
+                <template v-if="canManageTasks">
+                    <v-icon size="small" class="me-2" @click="editItem(item)">mdi-pencil</v-icon>
+                    <v-icon size="small" color="error" @click="deleteItem(item)">mdi-delete</v-icon>
+                </template>
             </template>
         </v-data-table>
     </v-container>
@@ -162,7 +186,8 @@ const userStore = useUserStore()
 const users = computed(() => userStore.users)
 
 const authStore = useAuthStore()
-const canCreate = computed(() => ['ADMIN', 'MANAGER'].includes(authStore.userRole))
+// Admin chỉ có quyền xem, không có quyền tạo/sửa/xóa task từ trang quản trị này.
+const canManageTasks = computed(() => authStore.userRole === 'MANAGER')
 
 const router = useRouter()
 
@@ -175,30 +200,68 @@ const headers = [
     { title: 'Ưu tiên', key: 'priority' },
     { title: 'Trạng thái', key: 'status' },
     { title: 'Hạn chót', key: 'deadline' },
-    { title: 'Hành động', key: 'actions', sortable: false },
+    { title: 'Hành động', key: 'actions', sortable: false, align: 'end' },
 ]
+
+const activeTab = ref('all')
+const displayTasks = computed(() => {
+    if (activeTab.value === 'assigned') {
+        return taskStore.tasks.filter(t => t.assigneeId === authStore.user?.id)
+    }
+    return taskStore.tasks
+})
 
 const editedIndex = ref(-1)
 const defaultItem = { id: '', title: '', description: '', projectId: '', assigneeId: '', priority: 'MEDIUM', status: 'TO_DO', deadline: null }
 const editedItem = ref({ ...defaultItem })
 
+// Computed: Lọc danh sách dự án cho dropdown
+// Manager chỉ thấy các dự án họ tham gia, Admin thấy tất cả.
+const projectsForDropdown = computed(() => {
+    if (authStore.userRole === 'MANAGER') {
+        const currentUserId = authStore.user?.id;
+        if (!currentUserId) return [];
+        return projects.value.filter(p => 
+            p.ownerId === currentUserId ||
+            p.managerIds?.includes(currentUserId) ||
+            p.memberIds?.includes(currentUserId)
+        );
+    }
+    return projects.value;
+});
+
 // Computed: Lọc danh sách user chỉ hiển thị những người thuộc Project đã chọn
 const projectUsers = computed(() => {
-    if (!editedItem.value.projectId) return []
-    
-    // Admin & Manager thấy tất cả user (để auto-add)
-    if (['ADMIN', 'MANAGER'].includes(authStore.userRole)) {
-        return users.value
-    }
+    // 1. Nếu chưa chọn dự án, trả về mảng rỗng
+    if (!editedItem.value.projectId) return [];
 
-    // Role khác chỉ thấy thành viên dự án
+    // 2. Tìm dự án đã chọn
     const project = projects.value.find(p => p.id === editedItem.value.projectId)
-    if (!project) return []
-    const memberIds = [project.ownerId, ...(project.managerIds || []), ...(project.memberIds || [])]
-    return users.value.filter(u => memberIds.includes(u.id))
-})
+    if (!project) return [];
 
-const formTitle = computed(() => editedIndex.value === -1 ? 'Thêm công việc mới' : 'Chỉnh sửa công việc')
+    // 3. Lấy ID của tất cả thành viên trong dự án
+    const memberIds = [project.ownerId, ...(project.managerIds || []), ...(project.memberIds || [])].filter(Boolean);
+
+    // 4. Lọc danh sách user toàn hệ thống để lấy object user tương ứng
+    // và loại bỏ những user có vai trò là ADMIN.
+    return users.value.filter(user => {
+        if (!memberIds.includes(user.id)) return false;
+        if (user.role === 'ADMIN') return false; // Không ai được giao việc cho Admin
+        
+        // Thêm điều kiện: Manager hệ thống không được giao việc cho Manager hệ thống khác
+        if (authStore.userRole === 'MANAGER' && user.role === 'MANAGER' && user.id !== authStore.user?.id) {
+            return false;
+        }
+        
+        return true;
+    });
+});
+
+const formTitle = computed(() => {
+  if (editedIndex.value === -1) return 'Thêm công việc mới'
+  // Nếu có quyền quản lý thì là "Chỉnh sửa", không thì là "Chi tiết"
+  return canManageTasks.value ? 'Chỉnh sửa công việc' : 'Chi tiết công việc'
+})
 
 // Hàm helper để lấy tên từ ID
 const getProjectName = (id) => {
@@ -226,6 +289,19 @@ const getPriorityColor = (priority) => {
 function goDetail(item) {
     const realItem = item.raw || item
     router.push(`/admin/tasks/${realItem.id}`)
+}
+
+const handleUpdateStatus = async (item, newStatus) => {
+    const realItem = item.raw || item
+    if (realItem.status === newStatus) return
+    try {
+        await taskStore.updateStatus(realItem.id, newStatus, '')
+    } catch (err) {
+        const msg = err.response?.status === 403 
+            ? "Chỉ người được giao việc mới chỉnh sửa trạng thái công việc được nhé" 
+            : (err.response?.data?.message || err.message)
+        alert("Lỗi cập nhật trạng thái: " + msg)
+    }
 }
 
 // Khi đổi dự án, reset người được giao việc nếu người đó không thuộc dự án mới
@@ -272,18 +348,18 @@ async function save() {
     const payload = { ...editedItem.value }
 
     // 1. Validate
-    if (!canCreate.value && editedIndex.value === -1) return alert('Bạn không có quyền tạo công việc mới')
+    if (!canManageTasks.value) return alert('Bạn không có quyền thực hiện hành động này.')
     if (!payload.title?.trim()) return alert('Vui lòng nhập tiêu đề công việc')
     if (!payload.projectId) return alert('Vui lòng chọn dự án')
 
     // 2. Format Data
     if (editedIndex.value === -1) delete payload.id
-    payload.description = payload.description || null
+    payload.description = payload.description || '' // Gửi chuỗi rỗng thay vì null để tránh lỗi 400
     payload.assigneeId = payload.assigneeId || null
     payload.deadline = payload.deadline ? (payload.deadline.length === 16 ? payload.deadline + ':00' : payload.deadline) : null
 
     // 3. Auto-add Member (Admin/Manager only)
-    if (['ADMIN', 'MANAGER'].includes(authStore.userRole) && payload.projectId && payload.assigneeId) {
+    if (canManageTasks.value && payload.projectId && payload.assigneeId) {
         const project = projects.value.find(p => p.id === payload.projectId)
         if (project) {
             const members = [project.ownerId, ...(project.managerIds || []), ...(project.memberIds || [])]
@@ -301,20 +377,23 @@ async function save() {
     // 4. Create/Update Task
     try {
         if (editedIndex.value > -1) {
-            await taskStore.update(payload.id, payload)
-            const original = tasks.value[editedIndex.value]
-            if (original.status !== payload.status) {
-                await taskStore.updateStatus(payload.id, payload.status, null)
-            }
+            await taskStore.update(payload.id, payload) // Gộp update, không cần gọi updateStatus riêng
         } else {
             await taskStore.create(payload)
         }
         close()
     } catch (error) {
         console.error('Save task error:', error)
-        const msg = error.response?.status === 403 
-            ? 'Bạn không có quyền thực hiện hành động này.' 
-            : (error.response?.data?.message || error.response?.data || 'Lỗi lưu dữ liệu')
+        let msg = 'Lỗi lưu dữ liệu'
+        if (error.response) {
+            if (error.response.status === 403) {
+                msg = 'Bạn không có quyền thực hiện hành động này.'
+            } else if (error.response.data) {
+                const data = error.response.data
+                // Nếu backend trả về object (ví dụ validation errors), hiển thị chi tiết hoặc stringify để đọc được lỗi
+                msg = (typeof data === 'object') ? (data.message || JSON.stringify(data)) : data
+            }
+        }
         alert('Lưu thất bại: ' + msg)
     }
 }

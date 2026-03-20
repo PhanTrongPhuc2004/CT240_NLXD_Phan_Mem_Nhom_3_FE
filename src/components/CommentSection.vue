@@ -2,6 +2,8 @@
 import { ref, onMounted, computed } from 'vue';
 import { commentApi } from '@/api/commentApi'; 
 import { useAuthStore } from '@/stores/auth';
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 // ==========================================
 // THÔNG TIN CHUNG & LOCAL STORAGE
@@ -46,7 +48,6 @@ onMounted(() => {
 });
 
 
-// ==========================================
 // [CHỨC NĂNG 24] - THÊM BÌNH LUẬN
 // ==========================================
 const fileInput = ref(null);
@@ -55,6 +56,17 @@ const isLoading = ref(false);
 const notifyAssignee = ref(true);
 const postAs = ref('Bình luận');
 const attachedFiles = ref([]);
+
+const editorOptions = {
+  modules: {
+    toolbar: [
+      ['bold', 'italic'],
+      ['link'],
+      [{ list: 'bullet' }],
+      ['code-block']
+    ]
+  }
+}
 
 const triggerChooseFile = () => fileInput.value.click();
 
@@ -104,13 +116,12 @@ const handleSendComment = async () => {
     attachedFiles.value = [];
     
     await fetchComments();
-  } catch (error) {
-    console.error("Lỗi API:", error);
-    alert(error.response?.data?.message || error.response?.data || "Lỗi Server (500): Vui lòng kiểm tra lại dữ liệu gửi đi.");
-    console.error(error);
-  } finally {
-    isLoading.value = false;
-  }
+} catch (error) {
+  console.log("FULL ERROR:", error.response);
+  alert(JSON.stringify(error.response?.data));
+} finally {
+  isLoading.value = false;
+}
 };
 
 
@@ -226,23 +237,15 @@ const deleteComment = async (commentId) => {
 
     <v-card-text class="pt-4 px-6 pb-2">
       <div class="comment-input-box mb-4 rounded border">
-        <div class="toolbar d-flex align-center px-3 py-1 border-b">
-          <v-btn icon="mdi-format-bold" variant="text" density="compact" color="grey-darken-1" class="mr-1"></v-btn>
-          <v-btn icon="mdi-format-italic" variant="text" density="compact" color="grey-darken-1" class="mr-1"></v-btn>
-          <v-btn icon="mdi-link" variant="text" density="compact" color="grey-darken-1" class="mr-1"></v-btn>
-          <v-btn icon="mdi-format-list-bulleted" variant="text" density="compact" color="grey-darken-1" class="mr-1"></v-btn>
-          <v-btn icon="mdi-code-tags" variant="text" density="compact" color="grey-darken-1"></v-btn>
-        </div>
-
-        <v-textarea
-          v-model="newCommentContent"
-          placeholder="Viết bình luận của bạn..."
-          variant="plain"
-          auto-grow
-          rows="3"
-          hide-details
-          class="px-4 py-2 custom-textarea"
-        ></v-textarea>
+        
+      <QuillEditor
+  v-model:content="newCommentContent"
+  placeholder="Viết bình luận của bạn..."
+  contentType="html"
+  theme="snow"
+  :options="editorOptions"
+  style="height:120px"
+/>
 
         <div v-if="attachedFiles.length > 0" class="attachments d-flex flex-wrap gap-3 px-4 pb-3 mt-2">
           <v-chip
@@ -388,7 +391,7 @@ const deleteComment = async (commentId) => {
 
               <div v-else>
                 <p class="mb-3 text-grey-darken-4 text-body-2 text-pre-wrap line-height-1-5">
-                  {{ comment.content }}
+                   <span v-html="comment.content"></span>
                   <span v-if="comment.edited" class="text-caption text-grey ml-1 font-italic">(Đã chỉnh sửa)</span>
                 </p>
 
