@@ -9,8 +9,45 @@ export const useReportStore = defineStore('report', {
     }),
 
     actions: {
-        async fetchStatistics(projectId) { /* TODO: CN_29 */ },
-        async fetchDetailedReport(projectId, startDate, endDate) { /* TODO: CN_30 */ },
-        async exportReport(projectId, type, format) { /* TODO: CN_31 */ },
+        async fetchStatistics(projectId) {
+            this.loading = true;
+            try {
+                const res = await reportApi.getProjectStatistics(projectId);
+                this.statistics = res.data || res;
+                return this.statistics;
+            } catch (err) {
+                console.error('Error fetching statistics:', err);
+                throw err;
+            } finally {
+                this.loading = false;
+            }
+        },
+        async fetchDetailedReport(projectId, startDate, endDate) {
+            this.loading = true;
+            try {
+                const res = await reportApi.getDetailedReport(projectId, startDate, endDate);
+                this.detailedReport = res.data || res;
+                return this.detailedReport;
+            } catch (err) {
+                console.error('Error fetching detailed report:', err);
+                throw err;
+            } finally {
+                this.loading = false;
+            }
+        },
+        async exportReport(projectId, type, format) {
+            try {
+                let res;
+                if (format === 'csv') {
+                    res = await reportApi.exportCsv(projectId, type);
+                } else {
+                    res = await reportApi.exportPdf(projectId, type);
+                }
+                return res.data || res;
+            } catch (err) {
+                console.error('Error exporting report:', err);
+                throw err;
+            }
+        },
     }
 })
