@@ -44,14 +44,6 @@
                     <v-text-field v-model="form.endDate" label="Ngày kết thúc" type="date"
                       variant="outlined" :min="form.startDate"></v-text-field>
                   </v-col>
-
-                  <v-col cols="12" sm="6">
-                    <div class="text-subtitle-2 mb-2">Khả năng hiển thị</div>
-                    <v-radio-group v-model="form.visibility" inline>
-                      <v-radio label="Công khai" value="public"></v-radio>
-                      <v-radio label="Riêng tư" value="private"></v-radio>
-                    </v-radio-group>
-                  </v-col>
                 </v-row>
 
                 <!-- Nút tạo dự án -->
@@ -123,7 +115,7 @@ const activeTab = ref('overview');
 const form = ref({
   name: '',
   description: '',
-  visibility: 'private',
+  visibility: 'public',
   startDate: '',
   endDate: '',
   members: []
