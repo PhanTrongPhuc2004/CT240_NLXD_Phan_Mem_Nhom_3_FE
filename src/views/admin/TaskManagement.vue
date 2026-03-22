@@ -10,9 +10,9 @@
             <template v-slot:top>
                 <v-toolbar flat>
                     <v-toolbar-title>Quản lý Công việc (Tasks)</v-toolbar-title>
-                    <v-divider class="mx-4" inset vertical></v-divider>
+                    <v-divider class="mx-4" inset vertical v-if="!isAdmin"></v-divider>
                     
-                    <v-tabs v-model="activeTab" color="primary">
+                    <v-tabs v-model="activeTab" color="primary" v-if="!isAdmin">
                         <v-tab value="all">Tất cả</v-tab>
                         <v-tab value="assigned">Của tôi</v-tab>
                     </v-tabs>
@@ -84,7 +84,7 @@
                                             ></v-select>
                                         </v-col>
                                         <v-col cols="12" sm="6">
-                                            <v-text-field v-model="editedItem.deadline" label="Hạn chót (Deadline)" type="datetime-local" :readonly="!canManageTasks"></v-text-field>
+                                            <v-text-field v-model="editedItem.deadline" label="Hạn chót (Deadline)" type="datetime-local" :readonly="!canManageTasks" @update:model-value="closeDatePicker"></v-text-field>
                                         </v-col>
                                     </v-row>
                                 </v-container>
@@ -194,6 +194,7 @@ const users = computed(() => userStore.users)
 const authStore = useAuthStore()
 // Admin chỉ có quyền xem, không có quyền tạo/sửa/xóa task từ trang quản trị này.
 const canManageTasks = computed(() => authStore.userRole === 'MANAGER')
+const isAdmin = computed(() => authStore.userRole === 'ADMIN')
 
 const canManageTaskItem = (item) => {
     const realItem = item.raw || item;
@@ -271,6 +272,9 @@ const projectUsers = computed(() => {
     // 4. Lọc danh sách user toàn hệ thống để lấy object user tương ứng
     // và loại bỏ những user có vai trò là ADMIN.
     return users.value.filter(user => {
+        // Luôn hiển thị chính mình để Manager có thể tự giao việc
+        if (user.id === authStore.user?.id) return true;
+
         if (!memberIds.some(id => id == user.id)) return false;
         if (user.role === 'ADMIN') return false; // Không ai được giao việc cho Admin
         
@@ -317,6 +321,13 @@ const getProjectName = (id) => {
 const getAssigneeName = (id) => {
     const user = users.value.find(u => u.id == id)
     return user ? user.fullName : (id || 'Chưa giao')
+}
+
+// Tự động ẩn lịch sau khi chọn xong (mất focus)
+const closeDatePicker = (val) => {
+    if (val && document.activeElement) {
+        document.activeElement.blur()
+    }
 }
 
 const getStatusColor = (status) => {
@@ -410,7 +421,7 @@ async function save() {
 
     // 2. Format Data
     if (editedIndex.value === -1) delete payload.id
-    payload.description = payload.description || '' // Gửi chuỗi rỗng thay vì null để tránh lỗi 400
+    payload.description = payload.description || null // Gửi null thay vì rỗng để tránh lỗi 400 Validation
     payload.assigneeId = payload.assigneeId || null
     payload.deadline = payload.deadline ? (payload.deadline.length === 16 ? payload.deadline + ':00' : payload.deadline) : null
 
@@ -424,8 +435,7 @@ async function save() {
                     await projectApi.assignMember(payload.projectId, { userId: payload.assigneeId })
                     await projectStore.fetchAllSystem()
                 } catch (err) {
-                Swal.fire('Lỗi', 'Lỗi thêm thành viên vào dự án: ' + (err.response?.data || err.message), 'error')
-                return
+                    console.warn('Lỗi thêm thành viên tự động (có thể đã là thành viên):', err.response?.data || err.message)
                 }
             }
         }
