@@ -4,6 +4,7 @@ import { commentApi } from '@/api/commentApi';
 import { useAuthStore } from '@/stores/auth';
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import ProtectedFile from './ProtectedFile.vue';
 
 // ==========================================
 // THÔNG TIN CHUNG & LOCAL STORAGE
@@ -34,6 +35,23 @@ const formatTimeAgo = (dateInput) => {
   return date.toLocaleDateString('vi-VN');
 };
 
+// lấy tên file (đã tự động cắt bỏ ID/UUID của Backend)
+const getFileNameFromUrl = (url) => {
+  if (!url) return 'File đính kèm';
+  
+  // Lấy tên file lưu trên server (vd: 360d384a_Nguyen_Hoang.pdf)
+  const storedFileName = url.split('/').pop(); 
+  
+  // Tìm vị trí dấu gạch dưới "_" đầu tiên
+  const splitIndex = storedFileName.indexOf('_');
+  
+  // Nếu không có dấu "_" thì trả về tên gốc, nếu có thì cắt bỏ phần trước "_"
+  if (splitIndex === -1) {
+    return decodeURIComponent(storedFileName);
+  }
+  return decodeURIComponent(storedFileName.substring(splitIndex + 1));
+};
+
 onMounted(() => {
   // Tự động lấy ID và Tên từ Local Storage theo đúng như ảnh bạn gửi
   if (authStore.user) {
@@ -56,6 +74,10 @@ const isLoading = ref(false);
 const notifyAssignee = ref(true);
 const postAs = ref('Bình luận');
 const attachedFiles = ref([]);
+const replyingToId = ref(null); // Lưu ID của bình luận cha
+const replyingToName = ref(''); // Lưu tên người đang được trả lời để hiển thị UI
+const quillRef = ref(null);
+
 
 const editorOptions = {
   modules: {
@@ -110,10 +132,19 @@ const handleSendComment = async () => {
     console.log("Đang gửi bình luận:", { taskId: props.taskId, content: newCommentContent.value, userId: currentUserId.value, files: filesToUpload });
 
     // Gọi API kèm ID thật của user từ Local Storage
-    await commentApi.addComment(props.taskId, newCommentContent.value, filesToUpload, currentUserId.value);
+    await commentApi.addComment(props.taskId, newCommentContent.value, filesToUpload, currentUserId.value, replyingToId.value);
     
     newCommentContent.value = '';
     attachedFiles.value = [];
+
+    //reset trạng thái trả lời 
+    cancelReply();
+    //xóa nội dung hiển thị
+ if (quillRef.value) {
+ quillRef.value.setHTML('<p><br></p>'); 
+ }
+
+
     
     await fetchComments();
 } catch (error) {
@@ -164,18 +195,56 @@ const filteredComments = computed(() => {
   return result;
 });
 
-const displayedComments = computed(() => {
-  return filteredComments.value.slice(0, visibleCount.value);
+//  Lấy danh sách GỐC (Chỉ những bình luận không có parentId)
+const allRootComments = computed(() => {
+  return filteredComments.value.filter(c => !c.parentId);
 });
 
+// Thay thế displayedComments cũ: Chỉ lấy số lượng Cha cần hiển thị
+const rootComments = computed(() => {
+  return allRootComments.value.slice(0, visibleCount.value);
+});
+
+// Cập nhật lại logic nút "Xem thêm": Tính dựa trên tổng số bình luận Cha
 const hasMoreComments = computed(() => {
-  return visibleCount.value < filteredComments.value.length;
+  return visibleCount.value < allRootComments.value.length;
 });
 
+// Hàm loadMore giữ nguyên hoặc tăng số lượng tùy bạn
 const loadMore = () => {
   visibleCount.value += 4; 
 };
 
+// Lấy danh sách reply theo parentId
+const getReplies = (parentId) => {
+  return comments.value.filter(c => c.parentId === parentId);
+};
+
+// ==========================================
+// HÀM XỬ LÝ KHI BẤM NÚT "TRẢ LỜI"
+// ==========================================
+const handleReply = (comment) => {
+  // Lưu ID cha
+  replyingToId.value = comment.id;
+  replyingToName.value = comment.userId === currentUserId.value ? 'Bạn' : (comment.userName || 'Người dùng');
+
+  // Cuộn xuống ô nhập liệu
+  const editorElement = document.getElementById('comment-editor');
+  if (editorElement) {
+    editorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // Focus vào editor
+  if (quillRef.value) {
+    quillRef.value.focus();
+  }
+};
+
+// Hàm để hủy trạng thái trả lời (nếu người dùng đổi ý)
+const cancelReply = () => {
+  replyingToId.value = null;
+  replyingToName.value = '';
+};
 
 // ==========================================
 // [CHỨC NĂNG 26] - SỬA / XÓA BÌNH LUẬN
@@ -236,9 +305,10 @@ const deleteComment = async (commentId) => {
     </v-card-title>
 
     <v-card-text class="pt-4 px-6 pb-2">
-      <div class="comment-input-box mb-4 rounded border">
+      <div id="comment-editor" class="comment-input-box mb-4 rounded border">
         
       <QuillEditor
+  ref="quillRef"
   v-model:content="newCommentContent"
   placeholder="Viết bình luận của bạn..."
   contentType="html"
@@ -278,8 +348,7 @@ const deleteComment = async (commentId) => {
         </div>
 
         <div class="d-flex align-center gap-3">
-          <v-btn variant="text" color="grey-darken-1" class="text-none font-weight-medium" @click="newCommentContent = ''; attachedFiles = []">Hủy</v-btn>
-          <v-btn
+<v-btn variant="text" color="grey-darken-1" class="text-none font-weight-medium" @click="newCommentContent = ''; attachedFiles = []; cancelReply(); if(quillRef) quillRef.setHTML('<p><br></p>');">Hủy</v-btn>          <v-btn
             color="grey-lighten-2"
             variant="flat"
             class="text-none px-6 font-weight-medium rounded-pill text-grey-darken-2"
@@ -331,115 +400,86 @@ const deleteComment = async (commentId) => {
         </div>
       </div>
 
-      <div class="comments-list">
-        <div v-if="comments.length === 0" class="text-grey mb-4 text-body-2 text-center py-4">Chưa có bình luận nào.</div>
-        <div v-else-if="displayedComments.length === 0" class="text-grey mb-4 text-body-2 text-center py-4">Không tìm thấy bình luận phù hợp.</div>
-        
-        <div v-for="comment in displayedComments" :key="comment.id" class="comment-wrapper d-flex gap-4 mb-6">
-          <v-avatar color="grey-lighten-1" size="40" class="mt-1">
-            <v-icon v-if="comment.userId === currentUserId" color="white" size="24">mdi-account</v-icon>
-            <span v-else class="text-white font-weight-medium">{{ comment.userName?.charAt(0).toUpperCase() || 'U' }}</span>
-          </v-avatar>
+<div class="comments-list">
+  <div v-if="comments.length === 0" class="text-grey mb-4 text-body-2 text-center py-4">Chưa có bình luận nào.</div>
+<div v-else-if="rootComments.length === 0" class="text-grey mb-4 text-body-2 text-center py-4">
+  Không tìm thấy bình luận phù hợp.
+</div>  
+  <div v-for="comment in rootComments" :key="comment.id" class="comment-group mb-8">
+    
+    <div class="comment-wrapper d-flex gap-4">
+      <v-avatar color="grey-lighten-1" size="40" class="mt-1">
+        <v-icon v-if="comment.userId === currentUserId" color="white" size="24">mdi-account</v-icon>
+        <span v-else class="text-white font-weight-medium">{{ comment.userName?.charAt(0).toUpperCase() || 'U' }}</span>
+      </v-avatar>
+
+      <div class="flex-grow-1">
+        <div class="d-flex align-center flex-wrap mb-2 gap-2">
+          <span class="font-weight-bold text-body-2 text-grey-darken-4">
+            {{ comment.userId === currentUserId ? 'Bạn' : (comment.userName || 'Người dùng') }}
+          </span>
+          <v-chip v-if="comment.userId !== currentUserId" size="x-small" color="blue-grey-darken-3" variant="flat" class="px-2">Thành viên</v-chip>
+          <span class="text-caption text-grey-darken-1">• {{ formatTimeAgo(comment.createdAt) }}</span>
+        </div>
+
+        <div v-if="editingCommentId === comment.id" class="mb-3">
+          <v-textarea v-model="editContent" variant="outlined" density="compact" auto-grow rows="2" hide-details class="bg-white mb-2"></v-textarea>
+          <div class="d-flex gap-2">
+            <v-btn color="primary" size="small" @click="saveEdit(comment.id)" :loading="isUpdating">Lưu</v-btn>
+            <v-btn variant="text" size="small" @click="cancelEdit">Hủy</v-btn>
+          </div>
+        </div>
+        <div v-else>
+          <p class="mb-2 text-grey-darken-4 text-body-2 text-pre-wrap"><span v-html="comment.content"></span></p>
           
-          <div class="flex-grow-1">
-            <div class="d-flex align-center flex-wrap mb-2 gap-2">
-              <span class="font-weight-bold text-body-2 text-grey-darken-4">
-                {{ comment.userId === currentUserId ? 'Bạn' : (comment.userName || 'Người dùng không xác định') }}
-              </span>
-              
-              <v-chip 
-                v-if="comment.userId !== currentUserId" 
-                size="x-small" 
-                color="blue-grey-darken-3" 
-                variant="flat" 
-                class="px-2 font-weight-medium text-caption"
-              >
-                Thành viên
-              </v-chip>
-
-              <span class="text-caption text-grey-darken-1">
-                • <v-icon size="12" class="mr-1 mb-1">mdi-clock-outline</v-icon>
-                {{ formatTimeAgo(comment.createdAt) }}
-              </span>
+          <div v-if="comment.attachmentUrls?.length > 0" class="pa-3 border rounded bg-grey-lighten-5 mb-2">
+            <div v-for="(url, idx) in comment.attachmentUrls" :key="idx" class="d-flex align-center justify-space-between mb-1">
+              <span class="text-caption text-truncate" style="max-width: 250px;">{{ getFileNameFromUrl(url) }}</span>
+              <ProtectedFile :url="'http://localhost:8080' + url" />
             </div>
+          </div>
 
-            <p v-if="comment.deleted || comment.isDeleted" class="mb-3 text-grey font-italic text-body-2 text-pre-wrap">
-              Bình luận này đã bị xóa.
-            </p>
-
-            <template v-else>
-              <div v-if="editingCommentId === comment.id" class="mb-3">
-                <v-textarea
-                  v-model="editContent"
-                  variant="outlined"
-                  density="compact"
-                  auto-grow
-                  rows="2"
-                  hide-details
-                  autofocus
-                  class="bg-white mb-2"
-                ></v-textarea>
-                <div class="d-flex gap-2">
-                  <v-btn color="primary" size="small" elevation="0" @click="saveEdit(comment.id)" :loading="isUpdating">
-                    Lưu
-                  </v-btn>
-                  <v-btn variant="text" size="small" color="grey-darken-1" @click="cancelEdit">
-                    Hủy
-                  </v-btn>
-                </div>
-              </div>
-
-              <div v-else>
-                <p class="mb-3 text-grey-darken-4 text-body-2 text-pre-wrap line-height-1-5">
-                   <span v-html="comment.content"></span>
-                  <span v-if="comment.edited" class="text-caption text-grey ml-1 font-italic">(Đã chỉnh sửa)</span>
-                </p>
-
-                <div v-if="comment.attachmentUrls && comment.attachmentUrls.length > 0" class="attachments-display mb-3">
-                  <div v-for="(url, index) in comment.attachmentUrls" :key="index" class="attachment-card d-flex align-center border rounded pa-3 mb-2">
-                    <v-avatar rounded size="40" color="grey-lighten-4" class="mr-3">
-                      <v-icon color="grey-darken-1">mdi-file-document-outline</v-icon>
-                    </v-avatar>
-                    <div class="flex-grow-1">
-                      <div class="text-body-2 font-weight-medium text-grey-darken-4 text-truncate" style="max-width: 250px;">Tài_liệu_đính_kèm_{{index + 1}}.pdf</div>
-                      <div class="text-caption text-grey">1.2 MB</div>
-                    </div>
-                    <v-btn icon="mdi-download" variant="text" size="small" color="grey-darken-1"></v-btn>
-                  </div>
-                </div>
-
-                <div class="action-buttons d-flex align-center gap-4 mt-2">
-                  <button class="action-btn text-grey-darken-2">
-                    <v-icon size="16" class="mr-1">mdi-reply</v-icon> Trả lời
-                  </button>
-                  
-                  <template v-if="comment.userId === currentUserId">
-                    <button class="action-btn text-grey-darken-2" @click="startEdit(comment)">
-                      <v-icon size="16" class="mr-1">mdi-pencil-outline</v-icon> Sửa
-                    </button>
-                    <button class="action-btn text-grey-darken-2" @click="deleteComment(comment.id)">
-                      <v-icon size="16" class="mr-1">mdi-trash-can-outline</v-icon> Xóa
-                    </button>
-                  </template>
-                </div>
-              </div>
+          <div class="action-buttons d-flex gap-4">
+            <button class="action-btn" @click="handleReply(comment)"><v-icon size="14">mdi-reply</v-icon> Trả lời</button>
+            <template v-if="comment.userId === currentUserId">
+              <button class="action-btn" @click="startEdit(comment)">Sửa</button>
+              <button class="action-btn" @click="deleteComment(comment.id)">Xóa</button>
             </template>
           </div>
         </div>
-
-        <div v-if="hasMoreComments" class="text-center mt-6">
-          <v-btn 
-            variant="tonal" 
-            color="grey-darken-1" 
-            class="text-none font-weight-medium rounded-pill px-6 bg-grey-lighten-4"
-            elevation="0"
-            @click="loadMore"
-          >
-            Xem thêm bình luận
-            <v-icon end>mdi-chevron-down</v-icon>
-          </v-btn>
-        </div>
       </div>
+    </div>
+
+    <div v-if="getReplies(comment.id).length > 0" class="replies-container">
+      <div v-for="reply in getReplies(comment.id)" :key="reply.id" class="reply-item d-flex gap-3 mt-4">
+        <v-avatar color="blue-grey-lighten-5" size="32">
+          <span class="text-caption font-weight-bold">{{ reply.userName?.charAt(0).toUpperCase() }}</span>
+        </v-avatar>
+        <div class="flex-grow-1">
+         <div class="d-flex align-center gap-2 mb-1">
+            <span class="font-weight-bold text-caption">{{ reply.userId === currentUserId ? 'Bạn' : reply.userName }}</span>
+            <span class="text-caption text-grey">{{ formatTimeAgo(reply.createdAt) }}</span>
+          </div>
+          
+          <div v-html="reply.content" class="text-body-2 text-grey-darken-4"></div>
+          
+          <div v-if="reply.attachmentUrls?.length > 0" class="pa-3 border rounded bg-grey-lighten-5 mb-2 mt-2">
+            <div v-for="(url, idx) in reply.attachmentUrls" :key="idx" class="d-flex align-center justify-space-between mb-1">
+              <span class="text-caption text-truncate" style="max-width: 250px;">{{ getFileNameFromUrl(url) }}</span>
+              <ProtectedFile :url="'http://localhost:8080' + url" />
+            </div>
+          </div>
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="hasMoreComments" class="text-center mt-6">
+    <v-btn variant="tonal" color="grey-darken-1" class="rounded-pill px-6" @click="loadMore">
+      Xem thêm bình luận <v-icon end>mdi-chevron-down</v-icon>
+    </v-btn>
+  </div>
+</div>
       
     </v-card-text>
   </v-card>
@@ -505,4 +545,27 @@ const deleteComment = async (commentId) => {
 }
 .action-btn:hover { color: #212121 !important; }
 .action-btn:last-child:hover { color: #d32f2f !important; }
+
+/* ---ĐOẠN NÀY ĐỂ HIỆN PHÂN CẤP --- */
+.replies-container {
+  margin-left: 55px; /* Đẩy bình luận con sang phải */
+  border-left: 2px solid #EEEEEE; /* Tạo đường kẻ dọc màu xám nhạt */
+  padding-left: 16px; /* Khoảng cách giữa đường kẻ và nội dung con */
+  margin-top: 10px;
+}
+
+.reply-item {
+  position: relative;
+  padding-bottom: 8px;
+}
+
+/* Tùy chỉnh hiệu ứng cho nút hành động nhỏ lại xíu cho tinh tế */
+.action-btn {
+  font-size: 12px !important;
+  color: #757575;
+}
+
+.action-btn:hover {
+  color: #1976D2 !important; /* Đổi màu xanh khi hover nút trả lời */
+}
 </style>
