@@ -13,15 +13,15 @@
     <v-card class="pa-4 mb-6">
       <v-row>
         <v-col cols="3">
-          <v-select v-model="selectedProject" label="Chọn dự án" :items="projects" item-title="name" item-value="id" variant="outlined" @update:model-value="fetchStatistics" />
+          <v-select v-model="selectedProject" label="Chọn dự án" :items="projects" item-title="name" item-value="id" variant="outlined" @update:model-value="onProjectChange" />
         </v-col>
 
         <v-col cols="3">
-          <v-text-field label="Từ ngày" type="date" variant="outlined" />
+          <v-text-field v-model="fromDate" label="Từ ngày" type="date" variant="outlined" />
         </v-col>
 
         <v-col cols="3">
-          <v-text-field label="Đến ngày" type="date" variant="outlined" />
+          <v-text-field v-model="toDate" label="Đến ngày" type="date" variant="outlined" />
         </v-col>
 
         <v-col cols="3" class="d-flex justify-center align-center ga-2">
@@ -170,7 +170,7 @@
                 Tùy chỉnh các lựa chọn để xuất báo cáo tối ưu cho màn hình máy tính (desktop).
               </p>
 
-              <v-select v-model="selectedProject" label="Dự án" :items="projects" item-title="name" item-value="id" variant="outlined" class="mb-1" />
+              <v-select v-model="selectedProject" label="Dự án" :items="projects" item-title="name" item-value="id" variant="outlined" class="mb-1" @update:model-value="onProjectChange" />
 
               <v-row>
                 <v-col cols="6">
@@ -196,7 +196,7 @@
 
               <v-row no-gutters class="mb-8">
                 <v-col cols="12" class="d-flex justify-center">
-                  <v-btn block class="primary-gradient-btn pulse-primary font-weight-bold" rounded="pill"> Áp dụng </v-btn>
+                  <v-btn block class="primary-gradient-btn pulse-primary font-weight-bold" rounded="pill" @click="fetchStatistics"> Áp dụng </v-btn>
                 </v-col>
               </v-row>
 
@@ -245,10 +245,10 @@
                 <v-col cols="6">
                   <p class="mt-2 font-weight-medium">Nội dung bổ sung</p>
 
-                  <v-checkbox density="compact" hide-details label="Bao gồm biểu đồ" />
-                  <v-checkbox density="compact" hide-details label="Bao gồm bảng chi tiết" />
-                  <v-checkbox density="compact" hide-details label="Bao gồm lịch sử thay đổi" />
-                  <v-checkbox density="compact" hide-details label="Bao gồm file đính kèm" />
+                  <v-checkbox v-model="includeCharts" density="compact" hide-details label="Bao gồm biểu đồ" />
+                  <v-checkbox v-model="includeDetails" density="compact" hide-details label="Bao gồm bảng chi tiết" />
+                  <v-checkbox v-model="includeHistory" density="compact" hide-details label="Bao gồm lịch sử thay đổi" />
+                  <v-checkbox v-model="includeAttachments" density="compact" hide-details label="Bao gồm file đính kèm" />
                 </v-col>
                 <v-col cols="6">
                   <p class="mt-2 font-weight-medium">Tùy chọn PDF nâng cao</p>
@@ -381,38 +381,61 @@ import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import Chart from 'chart.js/auto'
 import { projectApi } from '@/api/projectApi'
-import { reportApi } from '@/api/reportApi'
 import { taskApi } from '@/api/taskApi'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
+// --- UI / DATA STATE ---
 const projects = ref([])
 const selectedProject = ref(null)
 const fromDate = ref('')
 const toDate = ref('')
 
-const status = ref([
-  { name: 'Hoàn thành', count: 45, percent: 60 },
-  { name: 'Đã hủy', count: 5, percent: 7 },
-])
-const lateTasks = ref([
-  { title: 'Thiết kế giao diện Dashboard', project: 'Website Quản lý công việc', days: 3 },
-  { title: 'Viết API đăng nhập', project: 'Hệ thống Backend', days: 2 },
-  { title: 'Tối ưu database', project: 'CRM System', days: 5 },
-])
-const done = ref(45)
-const total = ref(60)
+const status = ref([])
+const lateTasks = ref([])
+const done = ref(0)
+const total = ref(0)
 
 const exportDialog = ref(false)
 const exportFormat = ref('pdf')
 const exportHistory = ref([])
+const includeCharts = ref(false)
+const includeDetails = ref(true)
+const includeHistory = ref(false)
+const includeAttachments = ref(false)
+const orientation = ref('portrait')
+const paperSize = ref('a4')
 
+let progressChartInstance = null
+let statusChartInstance = null
+
+// --- COMPUTED ---
+const progressPercent = computed(() => {
+  if (total.value === 0) return 0
+  return Math.round((done.value / total.value) * 100)
+})
+
+// --- LIFECYCLE ---
+onMounted(async () => {
+  try {
+    await userStore.fetchAll()
+  } catch (error) {
+    console.error("Error fetching users", error)
+  }
+  fetchProjects()
+  loadHistory()
+  nextTick(() => {
+    updateCharts({})
+  })
+})
+
+// --- HISTORY LOGIC ---
 const loadHistory = () => {
   const saved = localStorage.getItem('report_export_history')
   if (saved) {
-    try {
-      exportHistory.value = JSON.parse(saved)
-    } catch(e) {}
+    try { exportHistory.value = JSON.parse(saved) } catch(e) {}
   }
 }
 
@@ -425,77 +448,138 @@ const deleteHistory = (date) => {
   saveHistory()
 }
 
-const orientation = ref('portrait')
-const paperSize = ref('a4')
-
-const progressPercent = computed(() => {
-  if (total.value === 0) return 0
-  return Math.round((done.value / total.value) * 100)
-})
-
-let progressChartInstance = null
-let statusChartInstance = null
-
+// --- PROJECT FETCH LOGIC ---
 const fetchProjects = async () => {
   try {
     const res = await projectApi.getAllSystem()
     const data = res.data || res
-    projects.value = data.map(p => ({ name: p.name, id: p._id || p.id }))
+    projects.value = data.map(p => ({
+      name: p.name,
+      id: p._id || p.id,
+      startDate: p.startDate,
+      endDate: p.endDate
+    }))
     if (projects.value.length > 0) {
       selectedProject.value = projects.value[0].id
-      await fetchStatistics()
+      await onProjectChange()
     }
   } catch (error) {
     console.error('Error fetching projects:', error)
   }
 }
 
+const onProjectChange = async () => {
+  const p = projects.value.find(x => x.id === selectedProject.value)
+  if (p) {
+    fromDate.value = p.startDate ? new Date(p.startDate).toISOString().split('T')[0] : ''
+    toDate.value = p.endDate ? new Date(p.endDate).toISOString().split('T')[0] : ''
+  }
+  await fetchStatistics()
+}
+
+// --- STATISTICS FETCH LOGIC ---
 const fetchStatistics = async () => {
   if (!selectedProject.value) return
   try {
     const res = await taskApi.getByProject(selectedProject.value)
-    const data = res.data || res
+    let data = res.data || res
 
-    total.value = data.length
-    done.value = data.filter(t => t.status === 'DONE').length
+    // 1. Date filters
+    const filteredTasks = filterTasksByDate(data)
 
-    const tTodo = data.filter(t => t.status === 'TO_DO').length
-    const tInProgress = data.filter(t => t.status === 'IN_PROGRESS').length
-    const tDone = done.value
-    const tCancelled = data.filter(t => t.status === 'CANCELLED').length
+    // 2. Summary stats
+    updateTaskSummary(filteredTasks)
 
-    status.value = [
-      { name: 'Cần làm', count: tTodo, percent: total.value ? Math.round((tTodo / total.value) * 100) : 0 },
-      { name: 'Đang làm', count: tInProgress, percent: total.value ? Math.round((tInProgress / total.value) * 100) : 0 },
-      { name: 'Hoàn thành', count: tDone, percent: total.value ? Math.round((tDone / total.value) * 100) : 0 },
-      { name: 'Đã hủy', count: tCancelled, percent: total.value ? Math.round((tCancelled / total.value) * 100) : 0 },
-    ]
+    // 3. Late tasks
+    updateLateTasks(filteredTasks)
 
-    const now = new Date()
-    const projName = projects.value.find(p => p.id === selectedProject.value)?.name || 'Dự án'
+    // 4. Update Charts
+    prepareAndRenderCharts(filteredTasks)
 
-    const lates = data.filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED' && t.deadline && new Date(t.deadline) < now)
-    lateTasks.value = lates.map(t => {
-      const days = Math.floor((now - new Date(t.deadline)) / (1000 * 60 * 60 * 24))
-      return {
-        title: t.title,
-        project: projName,
-        projectId: selectedProject.value,
-        days: days > 0 ? days : 1
-      }
-    }).sort((a,b) => b.days - a.days).slice(0, 5)
-
-    updateCharts({
-      statusChart: {
-        labels: ['Cần làm', 'Đang làm', 'Hoàn thành', 'Đã hủy'],
-        data: [tTodo, tInProgress, tDone, tCancelled]
-      }
-    })
   } catch (error) {
     console.error('Error fetching statistics:', error)
-    // Fallback to update charts with current placeholder data if API fails
-    updateCharts({})
+    updateCharts({}) // Fallback
   }
+}
+
+const filterTasksByDate = (tasks) => {
+  return tasks.filter(t => {
+    let isValid = true
+    if (fromDate.value && t.deadline && new Date(t.deadline) < new Date(fromDate.value)) isValid = false
+    if (toDate.value && t.deadline && new Date(t.deadline) > new Date(toDate.value + 'T23:59:59')) isValid = false
+    return isValid
+  })
+}
+
+const updateTaskSummary = (tasks) => {
+  total.value = tasks.length
+  done.value = tasks.filter(t => t.status === 'DONE').length
+
+  const tTodo = tasks.filter(t => t.status === 'TO_DO').length
+  const tInProgress = tasks.filter(t => t.status === 'IN_PROGRESS').length
+  const tCancelled = tasks.filter(t => t.status === 'CANCELLED').length
+
+  status.value = [
+    { name: 'Cần làm', count: tTodo, percent: total.value ? Math.round((tTodo / total.value) * 100) : 0 },
+    { name: 'Đang làm', count: tInProgress, percent: total.value ? Math.round((tInProgress / total.value) * 100) : 0 },
+    { name: 'Hoàn thành', count: done.value, percent: total.value ? Math.round((done.value / total.value) * 100) : 0 },
+    { name: 'Đã hủy', count: tCancelled, percent: total.value ? Math.round((tCancelled / total.value) * 100) : 0 },
+  ]
+}
+
+const updateLateTasks = (tasks) => {
+  const now = new Date()
+  const projName = getProjectName()
+  
+  const lates = tasks.filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED' && t.deadline && new Date(t.deadline) < now)
+  
+  lateTasks.value = lates.map(t => {
+    const days = Math.floor((now - new Date(t.deadline)) / (1000 * 60 * 60 * 24))
+    return {
+      title: t.title,
+      project: projName,
+      projectId: selectedProject.value,
+      days: days > 0 ? days : 1
+    }
+  }).sort((a,b) => b.days - a.days).slice(0, 5)
+}
+
+const prepareAndRenderCharts = (tasks) => {
+  const dateMap = {}
+  tasks.forEach(t => {
+    const dbDate = new Date(t.createdAt || t.deadline || new Date())
+    const d = `${dbDate.getDate().toString().padStart(2, '0')}/${(dbDate.getMonth() + 1).toString().padStart(2, '0')}`
+    if (!dateMap[d]) dateMap[d] = { total: 0, done: 0 }
+    dateMap[d].total += 1
+    if (t.status === 'DONE') dateMap[d].done += 1
+  })
+
+  const dates = Object.keys(dateMap).sort()
+  let cumTotal = 0, cumDone = 0
+  const chartLabels = [], chartDataValues = []
+
+  if (dates.length === 0) {
+    chartLabels.push('Không có dữ liệu')
+    chartDataValues.push(0)
+  } else {
+    dates.forEach(d => {
+      cumTotal += dateMap[d].total
+      cumDone += dateMap[d].done
+      chartLabels.push(d)
+      chartDataValues.push(cumTotal ? Math.round((cumDone / cumTotal) * 100) : 0)
+    })
+  }
+
+  updateCharts({
+    progressChartData: {
+      labels: chartLabels,
+      datasets: [{ label: 'Tiến độ (%)', data: chartDataValues, borderColor: '#1976d2', tension: 0.4 }]
+    },
+    statusChart: {
+      labels: ['Cần làm', 'Đang làm', 'Hoàn thành', 'Đã hủy'],
+      data: status.value.map(s => s.count)
+    }
+  })
 }
 
 const updateCharts = (data) => {
@@ -533,6 +617,7 @@ const updateCharts = (data) => {
   }
 }
 
+// --- ROUTING ---
 const goDetail = () => {
   if (!selectedProject.value) return
   router.push({ name: 'ReportDetail', query: { projectId: selectedProject.value } })
@@ -543,30 +628,190 @@ const goToTaskReport = (projectId) => {
   router.push({ name: 'ReportDetail', query: { projectId } })
 }
 
+// --- REPORT EXPORT LOGIC ---
+const getProjectName = () => {
+  return projects.value.find(p => p.id === selectedProject.value)?.name || 'Dự án'
+}
+
+const getAssigneeName = (t) => {
+  if (t.assignee) return t.assignee.fullName || t.assignee.name || t.assigneeId || ''
+  const u = userStore.users.find(u => u.id === t.assigneeId)
+  return u ? u.fullName : (t.assigneeId || '')
+}
+
+const getExportHeaders = () => {
+  let headers = ['Tên công việc', 'Trạng thái', 'Ngày tạo', 'Hạn chót', 'Người thực hiện']
+  if (includeAttachments.value) headers.push('Đính kèm')
+  if (includeHistory.value) headers.push('Cập nhật lần cuối')
+  return headers
+}
+
+const generateChartsHtml = () => {
+  if (!includeCharts.value) return ''
+  
+  const progressCanvas = document.getElementById('progressChart')
+  const statusCanvas = document.getElementById('statusChart')
+  const progressImg = progressCanvas ? progressCanvas.toDataURL('image/png') : ''
+  const statusImg = statusCanvas ? statusCanvas.toDataURL('image/png') : ''
+  
+  return `
+    <h3>Biểu đồ báo cáo</h3>
+    <div style="display: flex; gap: 20px; align-items: start; margin-bottom: 20px;">
+      ${progressImg ? `<div><h4>Tiến độ</h4><img src="${progressImg}" style="max-width: 400px;" /></div>` : ''}
+      ${statusImg ? `<div><h4>Trạng thái</h4><img src="${statusImg}" style="max-width: 300px;" /></div>` : ''}
+    </div>
+  `
+}
+
+const generateTableRowsHtml = (tasks) => {
+  if (!includeDetails.value) return '<p><i>Không bao gồm bảng chi tiết công việc.</i></p>'
+  
+  const rows = tasks.map(t => {
+    let extraCells = ''
+    if (includeAttachments.value) extraCells += `<td>${t.attachments ? t.attachments.length : 0} file</td>`
+    if (includeHistory.value) extraCells += `<td>${t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('vi-VN') : ''}</td>`
+    
+    return `<tr>
+      <td>${t.title || ''}</td>
+      <td>${t.status || ''}</td>
+      <td>${t.createdAt ? new Date(t.createdAt).toLocaleDateString('vi-VN') : ''}</td>
+      <td>${t.deadline ? new Date(t.deadline).toLocaleDateString('vi-VN') : ''}</td>
+      <td>${getAssigneeName(t)}</td>
+      ${extraCells}
+    </tr>`
+  }).join('')
+
+  const headers = getExportHeaders()
+  return `
+    <table>
+      <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `
+}
+
+const exportPdf = (tasks, projName, chartsHtml) => {
+  const tableHtml = generateTableRowsHtml(tasks)
+  const printWindow = window.open('', '_blank', 'width=800,height=600')
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Báo cáo dự án - ${projName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+          th { background-color: #f4f4f4; }
+        </style>
+      </head>
+      <body>
+        <h2>Báo cáo dự án: ${projName}</h2>
+        <p>Thời gian xuất: ${new Date().toLocaleString('vi-VN')}</p>
+        ${chartsHtml}
+        ${tableHtml}
+        <script>
+          window.onload = function() { window.print(); window.close(); }
+        </${'script'}>
+      </body>
+    </html>
+  `)
+  printWindow.document.close()
+}
+
+const exportExcel = (tasks, projName, chartsHtml) => {
+  let tableHtml = '<p><i>Không bao gồm bảng chi tiết công việc.</i></p>'
+  if (includeDetails.value) {
+    const rows = tasks.map(t => {
+      let extraCells = ''
+      if (includeAttachments.value) extraCells += `<td>${t.attachments ? t.attachments.length : 0} file</td>`
+      if (includeHistory.value) extraCells += `<td>${t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('vi-VN') : ''}</td>`
+      return `<tr>
+        <td>${t.title || ''}</td>
+        <td>${t.status || ''}</td>
+        <td>${t.createdAt ? new Date(t.createdAt).toLocaleDateString('vi-VN') : ''}</td>
+        <td>${t.deadline ? new Date(t.deadline).toLocaleDateString('vi-VN') : ''}</td>
+        <td>${getAssigneeName(t)}</td>
+        ${extraCells}
+      </tr>`
+    }).join('')
+    tableHtml = `
+      <table border="1">
+        <thead><tr>${getExportHeaders().map(h => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `
+  }
+
+  const excelContent = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head><meta charset="utf-8"></head>
+    <body>
+      <h2>Báo cáo dự án: ${projName}</h2>
+      ${chartsHtml}
+      ${tableHtml}
+    </body>
+    </html>
+  `
+  downloadBlob(excelContent, `report-${selectedProject.value}.xls`, 'application/vnd.ms-excel')
+}
+
+const exportCsv = (tasks) => {
+  const headers = getExportHeaders()
+  let rows = []
+  
+  if (includeDetails.value) {
+    rows = tasks.map(t => {
+      let cols = [
+        `"${(t.title || '').replace(/"/g, '""')}"`,
+        `"${t.status || ''}"`,
+        `"${t.createdAt ? new Date(t.createdAt).toLocaleDateString('vi-VN') : ''}"`,
+        `"${t.deadline ? new Date(t.deadline).toLocaleDateString('vi-VN') : ''}"`,
+        `"${getAssigneeName(t)}"`
+      ]
+      if (includeAttachments.value) cols.push(`"${t.attachments ? t.attachments.length : 0} file"`)
+      if (includeHistory.value) cols.push(`"${t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('vi-VN') : ''}"`)
+      return cols
+    })
+  }
+
+  const csvContent = "\uFEFF" + headers.join(',') + '\n' + rows.map(e => e.join(',')).join('\n')
+  downloadBlob(csvContent, `report-${selectedProject.value}.csv`, 'text/csv;charset=utf-8;')
+}
+
+const downloadBlob = (content, filename, contentType) => {
+  const blob = new Blob([content], { type: contentType })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+}
+
 const exportReport = async () => {
   if (!selectedProject.value) return
+  
+  const projName = getProjectName()
+  
   try {
-    let response;
-    if (exportFormat.value === 'csv') {
-      response = await reportApi.exportCsv(selectedProject.value, exportFormat.value)
-    } else {
-      // API currently only has PDF mapping, so fallback excel to pdf as well or handle later
-      response = await reportApi.exportPdf(selectedProject.value, exportFormat.value)
-    }
+    const res = await taskApi.getByProject(selectedProject.value)
+    let tasks = res.data || res
+    tasks = filterTasksByDate(tasks)
 
-    const url = window.URL.createObjectURL(new Blob([response.data || response]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `report-${selectedProject.value}.${exportFormat.value}`)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
+    const chartsHtml = generateChartsHtml()
+
+    if (exportFormat.value === 'pdf') {
+      exportPdf(tasks, projName, chartsHtml)
+    } else if (exportFormat.value === 'excel') {
+      exportExcel(tasks, projName, chartsHtml)
+    } else {
+      exportCsv(tasks)
+    }
 
     exportDialog.value = false
     alert('Xuất báo cáo thành công!')
 
-    // Save success history
-    const projName = projects.value.find(p => p.id === selectedProject.value)?.name || 'Dự án'
     exportHistory.value.unshift({
       date: new Date().toLocaleString('vi-VN'),
       projectName: projName,
@@ -576,9 +821,7 @@ const exportReport = async () => {
     saveHistory()
   } catch (err) {
     console.error('Error exporting report:', err)
-
-    // Save failure history
-    const projName = projects.value.find(p => p.id === selectedProject.value)?.name || 'Dự án'
+    
     exportHistory.value.unshift({
       date: new Date().toLocaleString('vi-VN'),
       projectName: projName,
@@ -589,14 +832,6 @@ const exportReport = async () => {
     alert('Xuất báo cáo thất bại!')
   }
 }
-
-onMounted(() => {
-  fetchProjects()
-  loadHistory()
-  nextTick(() => {
-    updateCharts({})
-  })
-})
 </script>
 
 <style scoped>
