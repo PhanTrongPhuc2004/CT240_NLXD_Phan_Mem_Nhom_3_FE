@@ -447,7 +447,7 @@
                 ></v-select>
               </v-col>
               <v-col cols="12" sm="6">
-                <v-text-field v-model="editedTask.deadline" label="Hạn chót" type="datetime-local" variant="outlined" :readonly="!canManageTasks"></v-text-field>
+                <v-text-field v-model="editedTask.deadline" label="Hạn chót" type="datetime-local" variant="outlined" :readonly="!canManageTasks" @update:model-value="closeDatePicker"></v-text-field>
               </v-col>
             </v-row>
           </v-container>
@@ -661,7 +661,10 @@ const projectMembersList = computed(() => {
     project.value.ownerId,
     ...(project.value.memberIds || [])
   ];
-  return allUsers.value.filter(u => allMemberIds.includes(u.id));
+  return allUsers.value.filter(u => {
+    if (u.id === authStore.user?.id) return true; // Luôn hiển thị chính mình để tự giao việc
+    return allMemberIds.includes(u.id);
+  });
 });
 
 // Methods
@@ -699,6 +702,13 @@ const getTaskPriorityVN = (priority) => {
   return found ? found.title : priority;
 };
 // -------------------------
+
+// Tự động ẩn lịch
+const closeDatePicker = (val) => {
+  if (val && document.activeElement) {
+    document.activeElement.blur();
+  }
+};
 
 const getStatusColor = (status) => {
   switch (status) {
