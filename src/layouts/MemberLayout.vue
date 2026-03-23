@@ -35,7 +35,7 @@
 
         <v-list-item :to="{ name: 'Notifications' }" class="menu-item" prepend-icon="mdi-bell-outline" title="Thông báo của tôi"></v-list-item>
 
-        <v-list-item :to="{ name: 'Profile' }" class="menu-item" prepend-icon="mdi-account-circle-outline" title="Hồ sơ"></v-list-item>
+        <v-list-item :to="{ name: 'MemberProfile' }" class="menu-item" prepend-icon="mdi-account-circle-outline" title="Hồ sơ"></v-list-item>
       </v-list>
     </v-navigation-drawer>
 

@@ -118,7 +118,11 @@ const fetchProjects = async () => {
 }
 
 const goToEditProfile = () => {
-    router.push('/profile/edit')
+    if (['ADMIN', 'MANAGER'].includes(authStore.user?.role)) {
+        router.push('/admin/profile/edit')
+    } else {
+        router.push('/member/profile/edit')
+    }
 }
 
 onMounted(() => {

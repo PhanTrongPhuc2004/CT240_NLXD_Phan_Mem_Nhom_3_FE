@@ -36,6 +36,8 @@
                 <v-list-item :to="{ name: 'NotificationManagement' }" class="menu-item" prepend-icon="mdi-bell-outline" title="Thông báo"></v-list-item>
 
                 <v-list-item :to="{ name: 'ReportManagement' }" class="menu-item" prepend-icon="mdi-chart-bar" title="Báo cáo & Thống kê"></v-list-item>
+
+                <v-list-item :to="{ name: 'AdminProfile' }" class="menu-item" prepend-icon="mdi-account-circle-outline" title="Hồ sơ"></v-list-item>
             </v-list>
         </v-navigation-drawer>
 

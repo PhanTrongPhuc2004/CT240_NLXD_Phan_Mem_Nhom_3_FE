@@ -91,7 +91,11 @@ const saveProfile = async () => {
             fullName: form.value.fullName,
             avatarUrl: form.value.avatarUrl || null
         })
-        router.push('/member/profile')
+        if (['ADMIN', 'MANAGER'].includes(authStore.user?.role)) {
+            router.push('/admin/profile')
+        } else {
+            router.push('/member/profile')
+        }
     } catch (err) {
         console.error(err)
         alert('Lưu không thành công!')
@@ -100,7 +104,13 @@ const saveProfile = async () => {
     }
 }
 
-const goBack = () => router.push('/profile')
+const goBack = () => {
+    if (['ADMIN', 'MANAGER'].includes(authStore.user?.role)) {
+        router.push('/admin/profile')
+    } else {
+        router.push('/member/profile')
+    }
+}
 
 loadProfile()
 </script>

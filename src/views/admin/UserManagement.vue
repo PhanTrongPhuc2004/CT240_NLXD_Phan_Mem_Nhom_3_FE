@@ -5,7 +5,7 @@
         <v-row class="align-center mb-6" no-gutters>
             <v-col cols="12" md="6">
                 <h4 class="text-h5 font-weight-bold primary--text mb-0">Quản lý người dùng</h4>
-                <p class="text-caption text-grey mt-1">Quản lý toàn bộ tài khoản trong hệ thống (chỉ dành cho Admin)</p>
+                <p class="text-caption text-grey mt-1">Quản lý toàn bộ tài khoản trong hệ thống</p>
             </v-col>
 
             <v-col cols="12" md="6" class="text-right">
@@ -211,9 +211,9 @@ const filterUsers = () => {
     if (searchQuery.value.trim()) {
         const q = searchQuery.value.toLowerCase().trim()
         temp = temp.filter(u =>
-        (u.fullName?.toLowerCase().includes(q) ||
-            u.username?.toLowerCase().includes(q) ||
-            u.email?.toLowerCase().includes(q))
+        ((u.fullName || '').toLowerCase().includes(q) ||
+            (u.username || '').toLowerCase().includes(q) ||
+            (u.email || '').toLowerCase().includes(q))
         )
     }
     if (selectedRole.value !== 'Tất cả vai trò') {
