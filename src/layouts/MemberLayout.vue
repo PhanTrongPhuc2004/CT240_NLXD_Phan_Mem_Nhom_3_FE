@@ -4,7 +4,7 @@
     <!-- Header trên cùng -->
     <v-app-bar app color="primary" dark flat elevation="0" class="glass-header">
       <v-toolbar-title class="font-weight-bold">
-        Quản lý công việc nhóm
+        CT240-Quản lý công việc nhóm
       </v-toolbar-title>
       <v-spacer></v-spacer>
       <v-btn icon @click="logout" title="Đăng xuất">

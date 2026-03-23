@@ -710,7 +710,8 @@ const exportPdf = (tasks, projName, chartsHtml) => {
         ${chartsHtml}
         ${tableHtml}
         <script>
-          window.onload = function() { window.print(); window.close(); }
+          window.onload = function() { window.print(); }
+          window.onafterprint = function() { window.close(); }
         </${'script'}>
       </body>
     </html>

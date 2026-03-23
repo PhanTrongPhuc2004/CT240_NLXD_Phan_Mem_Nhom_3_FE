@@ -2,24 +2,25 @@
   <div class="protected-file-container mb-2">
     <v-progress-circular v-if="loading" indeterminate size="20" width="2"></v-progress-circular>
     
-    <v-img 
-      v-else-if="isImage && objectUrl" 
-      :src="objectUrl" 
-      max-width="300" 
-      class="rounded border"
-    ></v-img>
-
-    <v-btn 
-      v-else-if="objectUrl"
-      variant="outlined" 
-      size="small" 
-      color="primary" 
-      class="text-none"
-      @click="downloadFile"
-    >
-      <v-icon start>mdi-download</v-icon>
-      Tải xuống
-    </v-btn>
+    <div v-else-if="objectUrl" class="d-flex flex-column align-end">
+      <v-img 
+        v-if="isImage" 
+        :src="objectUrl" 
+        max-width="300" 
+        class="rounded border mb-2"
+      ></v-img>
+      
+      <v-btn 
+        variant="outlined" 
+        size="small" 
+        color="primary" 
+        class="text-none"
+        @click="downloadFile"
+      >
+        <v-icon start>mdi-download</v-icon>
+        Tải xuống
+      </v-btn>
+    </div>
 
     <span v-else class="text-caption text-error">Lỗi tải file (Không có dữ liệu)</span>
   </div>
@@ -35,7 +36,15 @@ const props = defineProps({
 
 const loading = ref(true);
 const objectUrl = ref(null);
-const fileName = computed(() => props.url.split('/').pop());
+const fileName = computed(() => {
+  const rawName = props.url.split('/').pop();
+  // Tự động cắt bỏ ID/UUID của Backend (vd: 360d384a_filename.pdf)
+  const splitIndex = rawName.indexOf('_');
+  if (splitIndex !== -1) {
+    return decodeURIComponent(rawName.substring(splitIndex + 1));
+  }
+  return decodeURIComponent(rawName);
+});
 const isImage = computed(() => /\.(jpg|jpeg|png|gif)$/i.test(props.url));
 
 const fetchFile = async () => {
